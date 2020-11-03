@@ -14,15 +14,15 @@
 - [Odevzdávací systém](http://hyperion.felk.cvut.cz:8081/)
 
 
-| __Základní informace__
-|:--------------:|------------------|------|----|
+| __Základní informace__ | |
+|:--------------:|------------------|
 | _Počet týmů_ | 66 týmů (5 botů) |
 | _Kvalifikuje se_ |  20 týmů (bez botů) |
 | _Deadline pro kvalifikaci_ |  24.11. v 23:59:59 |
 | _username_ | pm_mode |
 | _password_ | gQfgswC63Zod8UNRMy4C |
 
-| __Limity__
+| __Limity__ | |
 |:----------:|---|
 | _CPU_ | 1 (1 vlákno) |
 | _RAM_ | 5 GB |

@@ -8,6 +8,10 @@
 - [Predicting football results with RF](https://medium.com/@nicholasutikal/predict-football-results-with-random-forest-c3e6f6e2ee58)
 - [ML time series forecasting](https://towardsdatascience.com/ml-time-series-forecasting-the-right-way-cbf3678845ff)
 - [A machine learning framework for sport result prediction](https://www.sciencedirect.com/science/article/pii/S2210832717301485)
+- [Modeling outcomes of soccer matches](https://www.researchgate.net/publication/326754551_Modeling_outcomes_of_soccer_matches)
+- [Predicting the Winning Team with Machine Learning (vid, notebook in describtion)](https://youtu.be/6tQhoUuQrOw)
+- [Forecasting football matches by predicting match statistics](https://bit.ly/3oQKWp0)
+- [Can we get rich betting on Tennis? (notebook)](https://www.kaggle.com/drgilermo/betting-on-tennis-matches)
 
 ### Organizace
 - [Repozitář soutěže (data, vyhodnocovací loop)](https://github.com/IDA-CTU/hackathon/)

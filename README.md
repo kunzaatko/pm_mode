@@ -8,6 +8,11 @@
 - [Predicting football results with RF](https://medium.com/@nicholasutikal/predict-football-results-with-random-forest-c3e6f6e2ee58)
 - [ML time series forecasting](https://towardsdatascience.com/ml-time-series-forecasting-the-right-way-cbf3678845ff)
 - [A machine learning framework for sport result prediction](https://www.sciencedirect.com/science/article/pii/S2210832717301485)
+- [Modeling outcomes of soccer matches](https://www.researchgate.net/publication/326754551_Modeling_outcomes_of_soccer_matches)
+- [Predicting the Winning Team with Machine Learning (vid, notebook in describtion)](https://youtu.be/6tQhoUuQrOw)
+- [Forecasting football matches by predicting match statistics](https://bit.ly/3oQKWp0)
+- [Can we get rich betting on Tennis? (notebook)](https://www.kaggle.com/drgilermo/betting-on-tennis-matches)
+
 ### ELO rating system
 - [youtube - ELO rating system in chess and beyond](https://www.youtube.com/watch?v=AsYfbmp0To0)
 - [geekstogeeks - ELO rating system algorithm](https://www.geeksforgeeks.org/elo-rating-algorithm/)
@@ -16,7 +21,7 @@
 - [article - Pairwise Comparison and Ranking in Tournaments](./Sources/.Files/pairwise_comparison_and_ranking_in_tournaments.pdf)
 - [article - Best Treatment in a Paired Comparison Experiment](./Sources/.Files/best_treatment_in_a_paired_comparison_experiment.pdf)
 
-# Random forest
+### Random forest
 - [wikipedia - Random forest](https://en.wikipedia.org/wiki/Random_forest)
 
 ### Organizace

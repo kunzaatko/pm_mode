@@ -1,4 +1,4 @@
-# Vyhodnocení sázek na základě pravděpodobnosti
+# Vyhodnocení sázek na základě pravděpodobností
 
 ## vstupy
 (v jedné iteraci - pomocí incrementálních dat)

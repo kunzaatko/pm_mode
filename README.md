@@ -8,6 +8,16 @@
 - [Predicting football results with RF](https://medium.com/@nicholasutikal/predict-football-results-with-random-forest-c3e6f6e2ee58)
 - [ML time series forecasting](https://towardsdatascience.com/ml-time-series-forecasting-the-right-way-cbf3678845ff)
 - [A machine learning framework for sport result prediction](https://www.sciencedirect.com/science/article/pii/S2210832717301485)
+### ELO rating system
+- [youtube - ELO rating system in chess and beyond](https://www.youtube.com/watch?v=AsYfbmp0To0)
+- [geekstogeeks - ELO rating system algorithm](https://www.geeksforgeeks.org/elo-rating-algorithm/)
+- [wikipedia - ELO rating system](https://en.wikipedia.org/wiki/Elo_rating_system)
+- [article - ELO rating system alternative (Sonos rating system)](https://en.chessbase.com/post/the-sonas-rating-formula-better-than-elo)
+- [article - Pairwise Comparison and Ranking in Tournaments](./Sources/.Files/pairwise_comparison_and_ranking_in_tournaments.pdf)
+- [article - Best Treatment in a Paired Comparison Experiment](./Sources/.Files/best_treatment_in_a_paired_comparison_experiment.pdf)
+
+# Random forest
+- [wikipedia - Random forest](https://en.wikipedia.org/wiki/Random_forest)
 
 ### Organizace
 - [Repozitář soutěže (data, vyhodnocovací loop)](https://github.com/IDA-CTU/hackathon/)

@@ -31,6 +31,8 @@ Our task is to predict possible outcome of match as [P(H), P(D), P(A)].
  |GC_"something"| goals conceded in some time period | {0, 1, ...}|
  |GDiff_"something"|goals scored minus goals conceded in some time period| {..., -1, 0, 1, ...}|
  |MP|matches played in some time period|{0, 1, ...}|
+ |AS|attack strength = ratio of the team’s average number of goals scored and the league’s average number of goals scored| R|
+ |DS|defense strength = ratio of the team’s average number of goals allowed and the league’s average number of goals allowed| R|
  
  
  ### Outputs

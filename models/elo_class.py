@@ -6,12 +6,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 class ELO:
-    def __init__(self, mean_elo=1500, k_factor=0, draw_factor=0):
+    def __init__(self, mean_elo=1500, k_factor=20):
         # frame of teams that are in the league
         self.teams = pd.DataFrame(columns=["LIDs", "ELO"]) # a team can be in multiple leagues therefore 'LIDs' and not 'LID' viz. '../scripts/multiple_LIDs_for_one_team.py' # TODO: rozdělit ELO podle ligy <09-11-20, kunzaatko> #
         self.mean_elo = mean_elo
         self.k_factor = k_factor
-        self.draw_factor = draw_factor
 
     def __str__(self):
         return "Mean ELO: " + str(self.mean_elo) + "\n" + "K factor: " + str(self.k_factor) + "\n" + "Draw factor: " + str(self.draw_factor) + "\n" + str(self.teams)
@@ -75,7 +74,7 @@ class ELO:
 
         '''
         for (HID, AID, H, D, A) in data_frame[['HID','AID','H','D','A']].values:
-            self.update_ELO(HID, AID, [H,D,A])
+            self.update_ELO(HID, AID, (H,D,A))
 
     def update_ELO(self, HID, AID, result):
         '''
@@ -87,14 +86,36 @@ class ELO:
         result(list): [home_win(bool/int), draw(bool/int), away_win(bool/int)]. The options are mutually exclusive.
         '''
 
-        [home_win, _, away_win] = result
+        (home_win,_ , away_win) = result
         [home_elo, away_elo] = [self.teams.at[ID,'ELO'] for ID in [HID,AID]]
 
-        # TODO: Change to elo model based on leagues <09-11-20, kunzaatko> #
-        [home_expected, away_expected] = [1/(1+np.int32(10)**((int(elo_1) - int(elo_2)) / 400)) + K_factor for (elo_1, elo_2, K_factor) in [(away_elo, home_elo,self.k_factor), (home_elo, away_elo, -self.k_factor)]]
+        [home_expected, away_expected] = [1/(1+10**((elo_1 - elo_2) / 400)) for (elo_1, elo_2) in [(away_elo, home_elo), (home_elo, away_elo)]]
 
-        self.teams.at[HID, 'ELO'] = home_elo + self.k_factor * (int(home_win) + self.draw_factor - home_expected)
-        self.teams.at[AID, 'ELO'] = away_elo + self.k_factor * (int(away_win) + self.draw_factor - away_expected)
+        # Pokud někdo vyhrál, jelikož na remízy elo nefunguje
+        if any([home_win, away_win]):
+            self.teams.at[HID, 'ELO'] += self.k_factor * (home_win - home_expected)
+            self.teams.at[AID, 'ELO'] += self.k_factor * (away_win - away_expected)
+
+    def run_iter(self, inc, opps):
+        '''
+        Run the iteration of the evaluation loop.
+
+        Parameters:
+        inc(pandas.DataFrame):  'DataFrame' with the played matches.
+                                Has to include 'HID', 'AID', 'LID', 'H', 'D' and 'A'.
+        opps(pandas.DataFrame): 'DataFrame' with the betting opportunities.
+                                Has to include 'MatchID', 'HID' and 'AID'.
+        Returns:
+        pandas.DataFrame or None: 'DataFrame' indexed by `'MatchID'`s and the associated outcome probabilities `'P(H)'`, `'P(D)'` and `'P(A)'` for all matches in `opps` or `None` if no `opps` where passed.
+        '''
+        if inc is not None:
+            self.eval_inc(inc)
+
+        if opps is not None:
+            self.eval_opps(opps)
+            return self.P_dis(opps)
+        else:
+            return None
 
     def P_dis(self, data_frame):
         '''
@@ -129,7 +150,6 @@ class ELO:
 
         [home_elo, away_elo] = [self.teams.at[ID,'ELO'] for ID in [HID,AID]]
 
-        # TODO: Change to elo model based on leagues <09-11-20, kunzaatko> #
-        [home_expected, away_expected] = [1/(1+np.int32(10)**((int(elo_1) - int(elo_2)) / 400)) + K_factor for (elo_1, elo_2, K_factor) in [(away_elo, home_elo,self.k_factor), (home_elo, away_elo, -self.k_factor)]]
+        [home_expected, away_expected] = [1/(1+10**((elo_1 - elo_2) / 400)) for (elo_1, elo_2) in [(away_elo, home_elo), (home_elo, away_elo)]]
 
         return pd.DataFrame(data={'P(H)': [home_expected], 'P(D)': [0], 'P(A)': [away_expected]}, index=[MatchID])

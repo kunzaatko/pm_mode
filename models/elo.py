@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # FIXME: prosím doplnit komentáře. Dost toho je špatně k pochopení, pokud nejsi autorem kódu. <09-11-20, kunzaatko> #
 
 # DataFrame z celé historie zápasů
-df = pd.read_csv("/home/sramon/fotbal_data.csv")
+df = pd.read_csv("/home/sramon/fotbal_data.csv") # FIXME: Toto nepotřebujeme... bude to v environmentu, ve kterém budeme vyhodnocovat <09-11-20, kunzaatko> #
 
 # úprava DataFrame
 def c_elo(df):
@@ -34,7 +34,7 @@ def c_elo(df):
 
 
 # aktualizace ela dvou týmu po zápase # FIXME: takové komenáře do dokumentace funkce [https://en.wikibooks.org/wiki/Python_Programming/Source_Documentation_and_Comments] &1 <09-11-20, kunzaatko> #
-# FIXME: prosím, komentáře k inputům funkce. Není jasné zda to jsou booly a co přesně vyjadřují v rámci příkladu. Co je `K`? atd. <09-11-20, kunzaatko> #
+# FIXME: prosím, komentáře k inputům funkce. Není jasné zda to jsou booly a co přesně vyjadřují v rámci příkladu. Co je `K`? Co je 'index'? atd. <09-11-20, kunzaatko> #
 def update_elo(index, K, home_team, away_team, elo, home_win, away_win, draw, today):
     mean_elo = 1500  # FIXME: nepoužito <08-11-20, kunzaatko> #
     k_factor = 20
@@ -71,7 +71,7 @@ def update_elo(index, K, home_team, away_team, elo, home_win, away_win, draw, to
 
 
 # FIXME: &1 <09-11-20, kunzaatko> #
-# výroba tabulky el row = týden, column = tým, postfixově k datu # TODO: &1 <09-11-20, kunzaatko> #
+# výroba tabulky elo row = týden, column = tým, postfixově k datu # TODO: &1 <09-11-20, kunzaatko> #
 def create_elo(df, K):
     elo = c_elo(df)
     yesterday = "0"
@@ -109,6 +109,7 @@ def create_elo2(elo):
     return elo2
 
 
+# FIXME: home_team ani away_team nejsou použity <09-11-20, kunzaatko> #
 def expected_wins(K, home_team, away_team, df, index):
     elo_home_team = df.at[index, "elo_Home"]
     elo_away_team = df.at[index, "elo_Away"]
@@ -152,6 +153,11 @@ def expected_r(K, df):
     return expected
 
 
+# TODO: Do jiného souboru? <09-11-20, kunzaatko> #
+####################################
+#  Konec funkcí týkajících se ELO  #
+####################################
+
 def compare(expected, j):
 
     if (expected[0] - expected[1]) > j:
@@ -178,11 +184,6 @@ def draw_ratio(df, LD):
     draws_ratios = draws / matches
     return draws_ratios
 
-
-# TODO: Do jiného souboru? <09-11-20, kunzaatko> #
-####################################
-#  Konec funkcí týkajících se ELO  #
-####################################
 
 def win_ratio_away(df, LD):
     liga = df[df["LID"] == f"{LD}"]

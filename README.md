@@ -12,6 +12,8 @@
 - [Predicting the Winning Team with Machine Learning (vid, notebook in describtion)](https://youtu.be/6tQhoUuQrOw)
 - [Forecasting football matches by predicting match statistics](https://bit.ly/3oQKWp0)
 - [Can we get rich betting on Tennis? (notebook)](https://www.kaggle.com/drgilermo/betting-on-tennis-matches)
+- [The Application of Machine Learning Techniques for Predicting Results in Team Sport: A Review](https://bit.ly/3kduhIW)
+- [Combining historical data and bookmakers’odds in modelling football scores](https://arxiv.org/pdf/1802.08848.pdf)
 
 ### ELO rating system
 - [youtube - ELO rating system in chess and beyond](https://www.youtube.com/watch?v=AsYfbmp0To0)

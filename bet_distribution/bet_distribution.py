@@ -15,9 +15,9 @@ class Bet_distribution:
 
         Parameters:
             summary(pandas.DataFrame):  Summary of the current iteration. (from env)
-                                        Has to include 'Bankroll', 'max_bet' and 'min_bet'.
+                                        Has to include 'Bankroll', 'Max_bet' and 'Min_bet'.
         '''
-        self.summary = {'min_bet': summary.at[0, 'min_bet'], 'max_bet': summary.at[0, 'max_bet'], 'Bankroll': summary.at[0, 'Bankroll'] }
+        self.summary = {'Min_bet': summary.at[0, 'Min_bet'], 'Max_bet': summary.at[0, 'Max_bet'], 'Bankroll': summary.at[0, 'Bankroll'] }
 
     def eval_opps(self, opps):
         '''
@@ -50,14 +50,14 @@ class Bet_distribution:
         # TODO: Tohle není deterministicky nejlepší možnost, ale počítá se vsazením co nejvíce peněz. <10-11-20, kunzaatko>
         while exp_profit.to_numpy().max() >= self.bet_exp_profit_margin:
             argmax = np.unravel_index(exp_profit.to_numpy().argmax(), exp_profit.to_numpy().shape)
-            if self.summary['Bankroll'] >= (self.summary['min_bet'] + self.summary['max_bet']):
-                bet = self.summary['max_bet']
+            if self.summary['Bankroll'] >= (self.summary['Min_bet'] + self.summary['Max_bet']):
+                bet = self.summary['Max_bet']
                 self.bets.iloc[argmax] = bet
                 exp_profit.iloc[argmax] = 0 # abychom mohli najít další nejvyšší předpokládané zisky, vynulujeme zisky, na které už jsme vsadili
                 self.summary['Bankroll'] -= bet
 
-            elif self.summary['Bankroll'] >= 2*self.summary['min_bet']:
-                bet = self.summary['Bankroll'] - self.summary['min_bet']
+            elif self.summary['Bankroll'] >= 2*self.summary['Min_bet']:
+                bet = self.summary['Bankroll'] - self.summary['Min_bet']
                 self.bets.iloc[argmax] = bet
                 exp_profit.iloc[argmax] = 0
                 self.summary['Bankroll'] -= bet
@@ -75,7 +75,7 @@ class Bet_distribution:
 
         Parameters:
             summary(pandas.DataFrame):  Summary of the current iteration. (from env)
-                                        Has to include 'Bankroll', 'max_bet' and 'min_bet'.
+                                        Has to include 'Bankroll', 'Max_bet' and 'Min_bet'.
             opps(pandas.DataFrame): Opportunities for bets. (from env)
                                     Has to include 'OddsH','OddsD' and 'OddsA'.
             P_dis(pandas.DataFrame):    P_dis from model.

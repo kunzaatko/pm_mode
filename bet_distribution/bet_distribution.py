@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 class Bet_distribution:
-    def __init__(self):
+    def __init__(self, exp_profit_margin = 1.05):
         self.summary = None
         self.bets = None
         self.odds = None

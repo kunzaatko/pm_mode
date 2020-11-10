@@ -13,7 +13,7 @@ class Elo:
         self.k_factor = k_factor
 
     def __str__(self):
-        return "Mean ELO: " + str(self.mean_elo) + "\n" + "K factor: " + str(self.k_factor) + "\n" + "Draw factor: " + str(self.draw_factor) + "\n" + str(self.teams)
+        return "Mean ELO: " + str(self.mean_elo) + "\n" + "K factor: " + str(self.k_factor) + "\n" + str(self.teams)
 
     def eval_opps(self, opps):
         '''

@@ -45,7 +45,14 @@ class Elo:
                                         Has to include 'HID' and 'AID'.
         '''
         # FIXME: This could be done in one run through cating the 'HID' and the 'AID' cols <09-11-20, kunzaatko> #
-        new_teams = data_frame[[home_team not in self.teams.index for home_team in data_frame['HID']]]['HID'].append(data_frame[[ away_team not in self.teams.index for away_team in data_frame['AID']]]['AID']).unique()
+        new_home_teams = data_frame[[home_team not in self.teams.index for home_team in data_frame['HID'].values]]
+        new_away_teams = data_frame[[ away_team not in self.teams.index for away_team in data_frame['AID'].values]]
+        new_teams = pd.DataFrame()
+
+        if not new_home_teams.empty:
+            new_teams = new_teams.append(new_home_teams['HID'])
+        if not new_away_teams.empty:
+            new_teams = new_teams.append(new_away_teams['AID'])
 
         for team in new_teams:
             self.teams = self.teams.append(pd.DataFrame(data={'LIDs': [[]], 'ELO': [self.mean_elo]},index=[team]))
@@ -59,8 +66,18 @@ class Elo:
                                         Has to include 'HID', 'AID' and 'LID'.
         '''
         for team in self.teams.index:
-            # FIXME: This could be done in one run through cating the 'HID' and the 'AID' cols <09-11-20, kunzaatko> #
-            for LID in data_frame.set_index('HID').at[team, 'LID'].append(data_frame.set_index('AID').at[team, 'LID']).unique():
+            # TODO: use pandas dataframe for this <10-11-20, kunzaatko> #
+            LIDs = []
+            if team in data_frame['HID'].values:
+                for LID in data_frame.set_index('HID').at[team,'LID']:
+                    if LID not in LIDs:
+                        LIDs.append(LID)
+            elif team in data_frame['AID'].values:
+                for LID in data_frame.set_index('AID').at[team,'LID']:
+                    if LID not in LIDs:
+                        LIDs.append(LID)
+
+            for LID in LIDs:
                 if LID not in self.teams.at[team,'LIDs']:
                     self.teams.at[team, 'LIDs'].append(LID)
 
@@ -108,14 +125,9 @@ class Elo:
         Returns:
         pandas.DataFrame or None: 'DataFrame' indexed by `'MatchID'`s and the associated outcome probabilities `'P(H)'`, `'P(D)'` and `'P(A)'` for all matches in `opps` or `None` if no `opps` where passed.
         '''
-        if inc is not None:
-            self.eval_inc(inc)
-
-        if opps is not None:
-            self.eval_opps(opps)
-            return self.P_dis(opps)
-        else:
-            return None
+        self.eval_inc(inc)
+        self.eval_opps(opps)
+        return self.P_dis(opps)
 
     def P_dis(self, data_frame):
         '''
@@ -130,7 +142,7 @@ class Elo:
         '''
         P_dis = pd.DataFrame(columns=['P(H)', 'P(D)', 'P(A)'])
 
-        for (MatchID, HID, AID) in data_frame[['MatchID','HID','AID']].values:
+        for MatchID,(HID, AID) in zip(data_frame.index,data_frame[['HID','AID']].values):
             P_dis = P_dis.append(self.P_dis_match(MatchID,HID,AID))
 
         return P_dis

@@ -28,7 +28,7 @@ class Bet_distribution:
                                     Has to include 'OddsH','OddsD' and 'OddsA'.
         '''
         self.odds = opps[['OddsH', 'OddsD', 'OddsA']].sort_index()
-        self.bets = pd.DataFrame(data=np.zeros([3,len(opps)]), columns=['BetH', 'BetD', 'BetA'], index=self.odds.index)
+        self.bets = pd.DataFrame(data=np.zeros([len(opps),3]), columns=['BetH', 'BetD', 'BetA'], index=self.odds.index)
 
     def eval_P_dis(self, P_dis):
         '''
@@ -48,7 +48,7 @@ class Bet_distribution:
         exp_profit = pd.DataFrame(data=(self.odds.to_numpy() * self.P_dis.to_numpy()), columns=["ExpH","ExpD","ExpA"], index=self.P_dis.index) # index sorted so we multiply matching elements
 
         # TODO: Tohle není deterministicky nejlepší možnost, ale počítá se vsazením co nejvíce peněz. <10-11-20, kunzaatko>
-        while exp_profit.max() >= self.bet_exp_profit_margin:
+        while exp_profit.to_numpy().max() >= self.bet_exp_profit_margin:
             argmax = np.unravel_index(exp_profit.to_numpy().argmax(), exp_profit.to_numpy().shape)
             if self.summary['Bankroll'] >= (self.summary['min_bet'] + self.summary['max_bet']):
                 bet = self.summary['max_bet']

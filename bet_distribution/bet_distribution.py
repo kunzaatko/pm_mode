@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 
 class Bet_distribution:
+    '''
+    class for evaluating the distribution of the iteration Bankroll as bets in the betting opportunities.
+    '''
     def __init__(self, exp_profit_margin = 1.05, max_bet=None):
         self.summary = None
         self.bets = None
@@ -48,6 +51,7 @@ class Bet_distribution:
         '''
         Place optimal bets based `self.P_dis` and `self.odds`.
         '''
+        logs = pd.DataFrame()
         # předpokládaný zisk na jeden vsazený kredit
         exp_profit = pd.DataFrame(data=(self.odds.to_numpy() * self.P_dis.to_numpy()), columns=["ExpH","ExpD","ExpA"], index=self.P_dis.index) # index sorted so we multiply matching elements
 
@@ -72,6 +76,10 @@ class Bet_distribution:
                 exp_profit.iloc[argmax] = 0
                 self.summary['Bankroll'] -= bet
                 break
+
+            # TODO: Now returning empty log. Add something to the log to return. <11-11-20, kunzaatko> #
+            return logs
+
 
     def run_iter(self, summary, opps, P_dis):
         '''

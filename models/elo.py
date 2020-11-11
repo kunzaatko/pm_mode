@@ -127,9 +127,9 @@ class Elo:
         '''
         self.eval_inc(inc)
         self.eval_opps(opps)
-        return self.P_dis(opps)
+        return self.P_dis_get(opps)
 
-    def P_dis(self, data_frame):
+    def P_dis_get(self, data_frame):
         '''
         Calculate the probabilities based of match outcomes.
 
@@ -140,12 +140,17 @@ class Elo:
         Returns:
         pandas.DataFrame: 'DataFrame' indexed by `'MatchID'`s and the associated outcome probabilities `'P(H)'`, `'P(D)'` and `'P(A)'`.
         '''
+
+        log = pd.DataFrame()
+
         P_dis = pd.DataFrame(columns=['P(H)', 'P(D)', 'P(A)'])
 
         for MatchID,(HID, AID) in zip(data_frame.index,data_frame[['HID','AID']].values):
             P_dis = P_dis.append(self.P_dis_match(MatchID,HID,AID))
 
-        return P_dis
+        self.P_dis = P_dis
+
+        return log
 
     def P_dis_match(self, MatchID, HID, AID):
         '''

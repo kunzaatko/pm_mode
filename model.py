@@ -4,10 +4,14 @@ import pandas as pd
 from models.elo import Elo
 from bet_distribution.bet_distribution import Bet_distribution
 
-bet_distribution = Bet_distribution
-model = Elo
-model_params={}
-bet_distribution_params={}
+if 'bet_distribution' not in locals():
+    bet_distribution = Bet_distribution
+if 'model' not in locals():
+    model = Elo
+if 'model_params' not in locals():
+    model_params={}
+if 'bet_distribution_params' not in locals():
+    bet_distribution_params={}
 
 class Model:
     def __init__(self, model=model, model_params=model_params, log=True, bet_distribution = bet_distribution, bet_distribution_params={}):
@@ -15,8 +19,10 @@ class Model:
         Initialization of the model class with the parameters we want to use for evaluation.
 
         Parameters:
-        method()
-        log(bool): whether to log the process. If set to false, then self.log is false. Else is `self.log = (log_model, log_bet_distribution)`
+        model(class): `class` that represents the model used. It has to include the attribute `model.P_dis` and has to have the method `model.run_iter(inc,opps)` that returns the log. It is read from the `model` local variable.
+        model_params(dict): A dictionary of params to pass to the `model`. It is read from the `model_params` local variable.
+        log(bool): Whether to log the process. If set to `false`, then `self.log` is `false`. Else is `self.log = (log_model, log_bet_distribution)`. Where` log_model` is the log that `model.run_iter(...)` returns and `bet_distribution.run_iter(...)` returns.
+        bet_distribution_params(dict): A dictionary of params to pass to the `bet_distribution`. It is read from the `bet_distribution_params` local variable.
         '''
 
         self.model = model(**model_params)

@@ -138,7 +138,7 @@ class Elo:
                                         Has to include 'MatchID', 'HID' and 'AID'
 
         Returns:
-        pandas.DataFrame: 'DataFrame' indexed by `'MatchID'`s and the associated outcome probabilities `'P(H)'`, `'P(D)'` and `'P(A)'`.
+        pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
         '''
 
         log = pd.DataFrame()

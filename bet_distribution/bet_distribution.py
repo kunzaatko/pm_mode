@@ -50,8 +50,11 @@ class Bet_distribution:
     def update_bets(self):
         '''
         Place optimal bets based `self.P_dis` and `self.odds`.
+
+        Returns:
+        pd.DataFrame: log of the bet distibution process.
         '''
-        logs = pd.DataFrame()
+        log = pd.DataFrame()
         # předpokládaný zisk na jeden vsazený kredit
         exp_profit = pd.DataFrame(data=(self.odds.to_numpy() * self.P_dis.to_numpy()), columns=["ExpH","ExpD","ExpA"], index=self.P_dis.index) # index sorted so we multiply matching elements
 
@@ -78,7 +81,7 @@ class Bet_distribution:
                 break
 
             # TODO: Now returning empty log. Add something to the log to return. <11-11-20, kunzaatko> #
-            return logs
+            return log
 
 
     def run_iter(self, summary, opps, P_dis):

@@ -2,12 +2,13 @@ import numpy as np
 import pandas as pd
 
 class Bet_distribution:
-    def __init__(self, exp_profit_margin = 1.05):
+    def __init__(self, exp_profit_margin = 1.05, max_bet=None):
         self.summary = None
         self.bets = None
         self.odds = None
         self.P_dis = None
         self.bet_exp_profit_margin = 1.05 # TODO: zkusit různé hodnoty abychom započítaly nepřesnost našeho modelu <08-11-20, kunzaatko> #
+        self.max_bet=max_bet
 
     def eval_summary(self, summary):
         '''
@@ -17,7 +18,10 @@ class Bet_distribution:
             summary(pandas.DataFrame):  Summary of the current iteration. (from env)
                                         Has to include 'Bankroll', 'Max_bet' and 'Min_bet'.
         '''
-        self.summary = {'Min_bet': summary.at[0, 'Min_bet'], 'Max_bet': summary.at[0, 'Max_bet'], 'Bankroll': summary.at[0, 'Bankroll'] }
+        if self.max_bet is None:
+            self.summary = {'Min_bet': summary.at[0, 'Min_bet'], 'Max_bet': summary.at[0, 'Max_bet'], 'Bankroll': summary.at[0, 'Bankroll'] }
+        else:
+            self.summary = {'Min_bet': summary.at[0, 'Min_bet'], 'Max_bet': min(self.max_bet,summary.at[0,'Max_bet']), 'Bankroll': summary.at[0, 'Bankroll'] }
 
     def eval_opps(self, opps):
         '''

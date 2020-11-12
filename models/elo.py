@@ -123,7 +123,7 @@ class Elo:
         opps(pandas.DataFrame): 'DataFrame' with the betting opportunities.
                                 Has to include 'MatchID', 'HID' and 'AID'.
         Returns:
-        pandas.DataFrame or None: 'DataFrame' indexed by `'MatchID'`s and the associated outcome probabilities `'P(H)'`, `'P(D)'` and `'P(A)'` for all matches in `opps` or `None` if no `opps` where passed.
+        pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
         '''
         self.eval_inc(inc)
         self.eval_opps(opps)

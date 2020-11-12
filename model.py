@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 
-from models.elo import Elo
+from models.elo import Model_elo
 from bet_distribution.bet_distribution import Bet_distribution
 
 if 'bet_distribution' not in locals():
     bet_distribution = Bet_distribution
 if 'model' not in locals():
-    model = Elo
+    model = Model_elo
 if 'model_params' not in locals():
     model_params={}
 if 'bet_distribution_params' not in locals():

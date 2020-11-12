@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-class Elo:
+class Model_elo:
     def __init__(self, mean_elo=1500, k_factor=20):
         # frame of teams that are in the league
         self.teams = pd.DataFrame(columns=["LIDs", "ELO"]) # a team can be in multiple leagues therefore 'LIDs' and not 'LID' viz. '../scripts/multiple_LIDs_for_one_team.py' # TODO: rozdělit ELO podle ligy <09-11-20, kunzaatko> #

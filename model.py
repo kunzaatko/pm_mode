@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from models.elo import Elo
+from models.poisson_model import PoissonRegression
 from bet_distribution.bet_distribution import Bet_distribution
 
 if 'bet_distribution' not in locals():

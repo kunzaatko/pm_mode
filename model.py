@@ -3,6 +3,7 @@ import pandas as pd
 
 from models.elo import Model_elo
 from bet_distribution.bet_distribution import Bet_distribution
+from models.feature_extraction.feature_extraction import Data
 
 if 'bet_distribution' not in locals():
     bet_distribution = Bet_distribution
@@ -25,7 +26,8 @@ class Model:
         bet_distribution_params(dict): A dictionary of params to pass to the `bet_distribution`. It is read from the `bet_distribution_params` local variable.
         '''
 
-        self.model = model(**model_params)
+        self.data = Data()
+        self.model = model(self.data, **model_params)
         self.bet_distribution = bet_distribution(**bet_distribution_params)
         self.log = log
 
@@ -44,12 +46,20 @@ class Model:
         pandas.DataFrame: With the bets that we want to place. Indexed by the teams `ID`.
         '''
 
+
+        self.data.update_data(opps=opps,summary=summary, inc=inc)
+
         log_model = self.model.run_iter(inc, opps)
 
+        self.data.update_data(P_dis=self.model.P_dis)
+
         log_bet_distribution = self.bet_distribution.run_iter(summary, opps, self.model.P_dis)
+        self.data.update_data(bets=self.bet_distribution.bets)
 
         if self.log is True:
             self.log = (log_model, log_bet_distribution)
+
+        self.data.end_data_agregation_iter()
 
         return self.bet_distribution.bets
 

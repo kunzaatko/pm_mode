@@ -1,85 +1,24 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import math
+import sys
+
+from models.feature_extraction.feature_extraction import Data
 
 class Model_elo:
-    def __init__(self, mean_elo=1500, k_factor=20):
-        # frame of teams that are in the league
-        self.teams = pd.DataFrame(columns=["LIDs", "ELO"]) # a team can be in multiple leagues therefore 'LIDs' and not 'LID' viz. '../scripts/multiple_LIDs_for_one_team.py' # TODO: rozdělit ELO podle ligy <09-11-20, kunzaatko> #
+    def __init__(self, data,  mean_elo=1500, k_factor=20):
+        '''
+        Parameters:
+        data(class): class for agregating and manipulating data for the problem.
+        '''
+        self.Data = data
+        self.teams = self.Data.team_index
+        self.teams['ELO'] = np.NaN # založení column 'ELO'
         self.mean_elo = mean_elo
         self.k_factor = k_factor
 
     def __str__(self):
         return "Mean ELO: " + str(self.mean_elo) + "\n" + "K factor: " + str(self.k_factor) + "\n" + str(self.teams)
-
-    def eval_opps(self, opps):
-        '''
-        Evaluate betting opportunities:
-            1) Adds previously unknown teams to `self.teams`
-            2) Adds LIDs new for the teams to `self.teams`
-        '''
-        self.eval_new_teams(opps)
-        self.eval_new_LIDs(opps)
-
-    def eval_inc(self, inc):
-        '''
-        Evaluate data increment:
-            1) Adds previously unknown teams to `self.teams`
-            2) Adds LIDs new for the teams to `self.teams`
-            3) Evaluates the new ELOs for the teams
-        '''
-        self.eval_new_teams(inc)
-        self.eval_new_LIDs(inc)
-        self.eval_update_ELOs(inc)
-
-
-    def eval_new_teams(self, data_frame):
-        '''
-        New teams in `data_frame` to `self.teams` and associate `self.mean_elo` with them. (appends to `self.teams`)
-
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` to get new teams from (`inc` and `opps`).
-                                        Has to include 'HID' and 'AID'.
-        '''
-        # FIXME: This could be done in one run through cating the 'HID' and the 'AID' cols <09-11-20, kunzaatko> #
-        new_home_teams = data_frame[[home_team not in self.teams.index for home_team in data_frame['HID'].values]]
-        new_away_teams = data_frame[[ away_team not in self.teams.index for away_team in data_frame['AID'].values]]
-        new_teams = pd.DataFrame()
-
-        if not new_home_teams.empty:
-            new_teams = new_teams.append(new_home_teams['HID'])
-        if not new_away_teams.empty:
-            new_teams = new_teams.append(new_away_teams['AID'])
-
-        for team in new_teams:
-            self.teams = self.teams.append(pd.DataFrame(data={'LIDs': [[]], 'ELO': [self.mean_elo]},index=[team]))
-
-    def eval_new_LIDs(self, data_frame):
-        '''
-        If team is playing in a league that it did not play before, associate the 'LID' with it. (mutates `self.teams['LIDs']`)
-
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` to get new LIDs from for the teams in `self.teams` (`inc` and `opps`).
-                                        Has to include 'HID', 'AID' and 'LID'.
-        '''
-        for team in self.teams.index:
-            # TODO: use pandas dataframe for this <10-11-20, kunzaatko> #
-            LIDs = []
-            if team in data_frame['HID'].values:
-                for LID in data_frame.set_index('HID').at[team,'LID']:
-                    if LID not in LIDs:
-                        LIDs.append(LID)
-            elif team in data_frame['AID'].values:
-                for LID in data_frame.set_index('AID').at[team,'LID']:
-                    if LID not in LIDs:
-                        LIDs.append(LID)
-
-            for LID in LIDs:
-                if LID not in self.teams.at[team,'LIDs']:
-                    self.teams.at[team, 'LIDs'].append(LID)
 
     def eval_update_ELOs(self, data_frame):
         '''
@@ -91,9 +30,9 @@ class Model_elo:
 
         '''
         for (HID, AID, H, D, A) in data_frame[['HID','AID','H','D','A']].values:
-            self.update_ELO(HID, AID, (H,D,A))
+            self.__update_ELO(HID, AID, (H,D,A))
 
-    def update_ELO(self, HID, AID, result):
+    def __update_ELO(self, HID, AID, result):
         '''
         Updates the ELO for one match. This is the function to change if we want to change the algorithm. (mutates `self.teams['ELO']` `HID` and `AID`)
 
@@ -125,8 +64,13 @@ class Model_elo:
         Returns:
         pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
         '''
-        self.eval_inc(inc)
-        self.eval_opps(opps)
+        # Adding new teams
+        for ID in self.Data.team_index.index:
+            if ID not in self.teams.index:
+                self.teams.loc[ID] = self.Data.team_index.loc[ID]
+        self.teams.at[[math.isnan(d) for d in self.teams['ELO'].values],'ELO'] = self.mean_elo # define elo as mean elo for new teams
+
+        self.eval_update_ELOs(inc)
         return self.P_dis_get(opps)
 
     def P_dis_get(self, data_frame):

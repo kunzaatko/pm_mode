@@ -15,28 +15,28 @@ class Elo:
     def __str__(self):
         return "Mean ELO: " + str(self.mean_elo) + "\n" + "K factor: " + str(self.k_factor) + "\n" + str(self.teams)
 
-    def eval_opps(self, opps):
+    def __eval_opps(self, opps):
         '''
         Evaluate betting opportunities:
             1) Adds previously unknown teams to `self.teams`
             2) Adds LIDs new for the teams to `self.teams`
         '''
-        self.eval_new_teams(opps)
-        self.eval_new_LIDs(opps)
+        self.__eval_new_teams(opps)
+        self.__eval_new_LIDs(opps)
 
-    def eval_inc(self, inc):
+    def __eval_inc(self, inc):
         '''
         Evaluate data increment:
             1) Adds previously unknown teams to `self.teams`
             2) Adds LIDs new for the teams to `self.teams`
             3) Evaluates the new ELOs for the teams
         '''
-        self.eval_new_teams(inc)
-        self.eval_new_LIDs(inc)
-        self.eval_update_ELOs(inc)
+        self.__eval_new_teams(inc)
+        self.__eval_new_LIDs(inc)
+        self.__eval_update_ELOs(inc)
 
 
-    def eval_new_teams(self, data_frame):
+    def __eval_new_teams(self, data_frame):
         '''
         New teams in `data_frame` to `self.teams` and associate `self.mean_elo` with them. (appends to `self.teams`)
 
@@ -57,7 +57,7 @@ class Elo:
         for team in new_teams:
             self.teams = self.teams.append(pd.DataFrame(data={'LIDs': [[]], 'ELO': [self.mean_elo]},index=[team]))
 
-    def eval_new_LIDs(self, data_frame):
+    def __eval_new_LIDs(self, data_frame):
         '''
         If team is playing in a league that it did not play before, associate the 'LID' with it. (mutates `self.teams['LIDs']`)
 
@@ -81,7 +81,7 @@ class Elo:
                 if LID not in self.teams.at[team,'LIDs']:
                     self.teams.at[team, 'LIDs'].append(LID)
 
-    def eval_update_ELOs(self, data_frame):
+    def __eval_update_ELOs(self, data_frame):
         '''
         Updates the ELOs for based on the games recorded in the `data_frame`. (mutates `self.teams['ELO']`)
 
@@ -91,9 +91,9 @@ class Elo:
 
         '''
         for (HID, AID, H, D, A) in data_frame[['HID','AID','H','D','A']].values:
-            self.update_ELO(HID, AID, (H,D,A))
+            self.__update_ELO(HID, AID, (H,D,A))
 
-    def update_ELO(self, HID, AID, result):
+    def __update_ELO(self, HID, AID, result):
         '''
         Updates the ELO for one match. This is the function to change if we want to change the algorithm. (mutates `self.teams['ELO']` `HID` and `AID`)
 
@@ -125,8 +125,8 @@ class Elo:
         Returns:
         pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
         '''
-        self.eval_inc(inc)
-        self.eval_opps(opps)
+        self.__eval_inc(inc)
+        self.__eval_opps(opps)
         return self.P_dis_get(opps)
 
     def P_dis_get(self, data_frame):

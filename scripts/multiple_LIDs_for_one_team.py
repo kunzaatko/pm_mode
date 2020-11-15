@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-dataset = pd.read_csv('../hackathon/data/training_data.csv')
+dataset = pd.read_csv('../hackathon/data/training_data.csv', parse_dates=['Date', 'Open'])
 
 teams = dataset['HID'].unique()
 teams.sort()

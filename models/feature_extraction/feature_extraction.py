@@ -96,25 +96,25 @@ class Data:
         inc(pandas.DataFrame): includes the played matches with the scores for the model.
         '''
         if summary is not None:
-            self.__eval_summary(summary)
+            self._eval_summary(summary)
 
         if inc is not None:
             self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
-            self.__eval_inc(inc)
+            self._eval_inc(inc)
 
         if opps is not None:
             self._curr_opps_teams = np.unique(np.concatenate((opps['HID'].to_numpy(dtype='int64'),opps['AID'].to_numpy(dtype='int64'))))
-            self.__eval_opps(opps)
+            self._eval_opps(opps)
 
         if P_dis is not None:
-            self.__eval_P_dis(P_dis)
+            self._eval_P_dis(P_dis)
 
         if bets is not None:
-            self.__eval_bets(bets)
+            self._eval_bets(bets)
 
         # }}}
 
-    def __eval_summary(self, summary):
+    def _eval_summary(self, summary):
         # {{{
         self.today = summary['Date'][0]
         self.bankroll = summary['Bankroll'][0]
@@ -123,43 +123,43 @@ class Data:
             self.curr_summary = summary
         # }}}
 
-    def __eval_inc(self, inc):
+    def _eval_inc(self, inc):
         # {{{
-        self.__eval_teams(inc, self._curr_inc_teams)
-        # self.__eval_matches(inc)
+        self._eval_teams(inc, self._curr_inc_teams)
+        self._eval_matches(inc)
 
         if not self._no_copy:
             self.curr_inc = inc
         # }}}
 
-    def __eval_opps(self, opps):
+    def _eval_opps(self, opps):
         # {{{
-        self.__eval_teams(opps, self._curr_inc_teams)
-        # self.__eval_matches(opps)
-        # self.__eval_betting_run(opps)
+        self._eval_teams(opps, self._curr_inc_teams)
+        # self._eval_matches(opps)
+        # self._eval_betting_run(opps)
 
         if not self._no_copy:
             self.curr_opps = opps
         # }}}
 
-    def __eval_P_dis(self, P_dis):
+    def _eval_P_dis(self, P_dis):
         # {{{
-        self.__eval_betting_run(P_dis)
+        self._eval_betting_run(P_dis)
 
         if not self._no_copy:
             self.curr_P_dis = P_dis
         # }}}
 
-    def __eval_bets(self, bets):
+    def _eval_bets(self, bets):
         # {{{
-        self.__eval_matches(bets, check_for_new=False)
-        self.__eval_betting_run(bets)
+        self._eval_matches(bets, check_for_new=False)
+        self._eval_betting_run(bets)
 
         if not self._no_copy:
             self.curr_bets = bets
         # }}}
 
-    def __eval_teams(self, data_frame, data_frame_teams):
+    def _eval_teams(self, data_frame, data_frame_teams):
         # {{{
 
         if not data_frame.empty:
@@ -222,8 +222,22 @@ class Data:
 
             # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
 
+    def _eval_matches(self, data_frame, check_for_new=True):
+        # {{{
+        # TODO: change this to concatenation <15-11-20, kunzaatko> #
+        existing_indexes = [match for match in data_frame.index if match in self.matches.index] # matches that are already indexed
+        existing_matches = data_frame.loc[existing_indexes]
+        for i in existing_matches.index:
+            for key in existing_matches.columns:
+                self.matches.at[i,key] = data_frame.at[i,key] # we assume that the newer dataframe is right
 
-    def __eval_betting_run(self, data_frame):
+        if check_for_new:
+            new_indexes = [match for match in data_frame.index if match not in existing_indexes] # matches to append to the self.matches as a whole
+            new_matches = data_frame.loc[new_indexes]
+            for i in new_matches.index:
+                self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches}}}
+
+    def _eval_betting_run(self, data_frame):
         # {{{
         if self.curr_betting_run is None:
             self.curr_betting_run = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA'])
@@ -241,20 +255,7 @@ class Data:
             self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches
         # }}}
 
-    def __eval_matches(self, data_frame, check_for_new=True):
-        # {{{
-        existing_indexes = [match for match in data_frame.index if match in self.matches.index] # matches that are already indexed
-        existing_matches = data_frame.loc[existing_indexes]
-        for i in existing_matches.index:
-            for key in existing_matches.columns:
-                self.matches.at[i,key] = data_frame.at[i,key] # we assume that the newer dataframe is right
-
-        if check_for_new:
-            new_indexes = [match for match in data_frame.index if match not in existing_indexes] # matches to append to the self.matches as a whole
-            new_matches = data_frame.loc[new_indexes]
-            for i in new_matches.index:
-                self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches}}}
-
+    # DEPRECATED
     def end_data_agregation_iter(self):
         ''' # {{{
         End the current data agregation iteration. It has to be run after all the available data has been passed.

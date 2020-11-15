@@ -1,52 +1,78 @@
 import numpy as np
 import pandas as pd
 
+'''
+enum of (wanted) characteristics:
+---------------------------------
+
+##########################
+#  TIME CHARACTERISTICS  #
+##########################
+Season-long: season-long score ('SL_SC'), season-long win-lose ratio ('SL_RES'), season-long matches played ('SL_PLAY')
+Life-long: life-long score ('LL_SC'), life-long win-lose ratio ('LL_RES'), life-long matches played ('LL_PLAY')
+
+###########################
+#  MATCH CHARACTERISTICS  #
+###########################
+Last-match: last-match score ('LM_SC'), last-match result ('LM_RES'), last-match oppo ('LM_OPPO'), last-match P_dis ('LM_P_DIS') last-match date ('LM_DATE')
+Last-match-with: last-match-with score ('LMW_SC'), last-match-with result ('LMW_RES'), last-match-with P_dis ('LMW_P_DIS'), last-match-with date ('LMW_DATE')
+
+'''
+
 class Data:
-    def __init__(self):
-        '''
-        Class for manipulating the data and extracting characteristics.
+    '''
+    Class for manipulating the data and extracting characteristics.
 
-        enum of (wanted) characteristics:
-        ---------------------------------
+    Attributes:
+        today (None): current date (`pandas._libs.tslibs.timestamps.Timestamp`)
 
-        ##########################
-        #  TIME CHARACTERISTICS  #
-        ##########################
-        Season-long: season-long score ('SL_SC'), season-long win-lose ratio ('SL_RES'), season-long matches played ('SL_PLAY')
-        Life-long: life-long score ('LL_SC'), life-long win-lose ratio ('LL_RES'), life-long matches played ('LL_PLAY')
+        curr_opps (None): current iteration `opps` (`pd.DataFrame` - `Index(['Sea', 'Date', 'LID', 'HID', 'AID', 'Open', 'OddsH', 'OddsD', 'OddsA', 'BetH', 'BetD', 'BetA'], dtype='object')`)
 
-        ###########################
-        #  MATCH CHARACTERISTICS  #
-        ###########################
-        Last-match: last-match score ('LM_SC'), last-match result ('LM_RES'), last-match oppo ('LM_OPPO'), last-match P_dis ('LM_P_DIS') last-match date ('LM_DATE')
-        Last-match-with: last-match-with score ('LMW_SC'), last-match-with result ('LMW_RES'), last-match-with P_dis ('LMW_P_DIS'), last-match-with date ('LMW_DATE')
+        curr_inc (None): current iteration `inc` (`pd.DataFrame` - `Index(['Sea', 'Date', 'LID', 'HID', 'AID', 'Open', 'OddsH', 'OddsD', 'OddsA', 'HSC', 'ASC', 'H', 'D', 'A', 'BetH', 'BetD', 'BetA'], dtype='object')`)
+
+        curr_bets (None): current iteration `bets` (`pd.DataFrame` - `Index([`BetH`, 'BetD', 'BetA'], dtype='object')`)
+
+    '''
+    # TODO: Add parameters to restrict the tracking of unneeded evaluation data elements <14-11-20, kunzaatko> #
+    def __init__(self, no_copy=True):
         '''
 
-        ##################
-        #  Storage data  #
-        ##################
+        Parameters:
+            no_copy(bool): Whether to store the `curr_opps`, `curr_inc`, `curr_P_dis`, and `curr_bets` to `self`. This will make the it run faster.
+        '''
 
-        self.today = None # current date ﭾ
-        self.curr_opps = None # current `opps` ﭾ
-        self.curr_inc = None # current `inc` ﭾ
+        ########################
+        #  private attributes  #
+        ########################
+        self._no_copy = no_copy
+        self._curr_inc_teams= None # teams that are in inc
+        self._curr_opps_teams= None # teams that are in opps
+
+
+        ########################
+        #  Storage attributes  #
+        ########################
         self.curr_summary = None # current `summary` ﭾ
         self.curr_bets = None # current `bets` ﭾ
-        self.curr_teams = None # teams in the current `inc`/`opps`
+        self.curr_opps = None # current `opps` ﭾ
+        self.curr_inc = None # current `inc` ﭾ
         self.curr_P_dis = None # current `P_dis` ﭾ
-        self.curr_betting_run = None # current `opps` associated with `P_dis`, and the associated `bets`ﭾ
-        self.betting_runs = {} # `opps` that was passed with the associated `P_dis`, and the associated `bets` (dict) # NOTE: This potentialy could slow down the system and occupy more RAM <13-11-20, kunzaatko> #
+
+
+        ##########################
+        #  Essential attributes  #
+        ##########################
+        self.today = None # current date
+        self.bankroll = None # current bankroll
+        self.betting_runs = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA']) # `opps` that was passed with the associated `P_dis`, and the associated `bets` (series). Indexed by the date that it occured in opps.
         self.matches = pd.DataFrame(columns=['Date', 'Sea','LID','HID','AID','OddsH','OddsD','OddsA','HSC','ASC','H','D','A','BetH','BetD','BetA']) # All matches played by IDs ﭾ
-        # 'LID = league ID (list)'
-        self.team_index = pd.DataFrame(columns=['LID']) # recorded teams ﭾ
 
-
-        ##############################
-        #  Features data - by teams  #
-        ##############################
-
-        # 'SC = score (pd.DataFrame(columns=['TEAM', 'OPPO']))', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'PLAYED = matches played (int)', 'NEW = new (bool)', 'ACU = accuracy (float)'
-        self.time_data = pd.DataFrame(columns=['SL_SC', 'SL_RES', 'SL_PLAYED', 'SL_NEW', 'SL_ACCU', 'LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_NEW', 'LL_ACCU']) # data frame for storing all the time characteristics
-        self.season_time_data = pd.DataFrame(columns=['S_DATA_FRAME']) # data frame for moving the data of the last season when a new season in started
+        #########################
+        #  Features attributes  #
+        #########################
+        # 'LID = Leagues' 'SC = score (pd.DataFrame(columns=['TEAM', 'OPPO']))', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'PLAYED = #matches_played (int)', 'NEW = new (bool)', 'ACU = accuracy (float)'
+        self.team_index = pd.DataFrame(columns=['LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_NEW', 'LL_ACCU']) # recorded teams
+        self.time_data = pd.DataFrame(columns=['SL_SC', 'SL_RES', 'SL_PLAYED', 'SL_NEW', 'SL_ACCU']) # data frame for storing all the time characteristics for seasons
 
         # 'SC = score (TEAM, OPPO)', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'DATE = date', 'LM_SIDE = home/away (str)', 'LM_P_DIS = pd.DataFrame(columns=['win_p', 'draw_p', 'lose_p'])'
         self.last_match_data = pd.DataFrame(columns=['MatchID', 'LM_SC (T,O)', 'LM_RES (T,D,O)', 'LM_DATE', 'LM_SIDE (H,A)', 'LM_P_DIS (W,D,L)']) # data frame for storing all the Last-match characteristics
@@ -58,8 +84,10 @@ class Data:
     ######################################
 
     def update_data(self, opps=None ,summary=None, inc=None, P_dis=None, bets=None):
-        '''# {{{
+        # {{{
+        '''
         Run the iteration update of the data stored.
+        ! Summary has to be updated first to get the right date!
 
         Parameters:
         All the parameters are supplied by the evaluation loop.
@@ -71,9 +99,11 @@ class Data:
             self.__eval_summary(summary)
 
         if inc is not None:
+            self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
             self.__eval_inc(inc)
 
         if opps is not None:
+            self._curr_opps_teams = np.unique(np.concatenate((opps['HID'].to_numpy(dtype='int64'),opps['AID'].to_numpy(dtype='int64'))))
             self.__eval_opps(opps)
 
         if P_dis is not None:
@@ -82,111 +112,119 @@ class Data:
         if bets is not None:
             self.__eval_bets(bets)
 
-        # If all the data needed was already recorded put it into the dictionary.
-        if self.curr_opps is not None and self.curr_summary is not None and self.curr_bets is not None and self.curr_P_dis is not None:
-            self.betting_runs[self.today] = self.curr_betting_run # }}}
-
-    def __eval_opps(self, opps):
-        '''# {{{
-        Evaluate the `opps` dataframe.
-
-        Parameters:
-        opps(pandas.DataFrame): `DataFrame` that includes the opportunities for betting.
-        '''
-        self.__eval_new_teams(opps)
-        self.__eval_new_LIDs(opps)
-        self.__eval_curr_betting_run(opps)
-        self.__eval_matches(opps)
-        self.__eval_curr_betting_run(opps)
-        self.curr_opps = opps # }}}
-
-    def __eval_inc(self,inc):
-        ''' # {{{
-        Evaluate the `inc` dataframe.
-
-        Parameters:
-        inc(pandas.DataFrame):  'DataFrame' with the played matches.
-        '''
-        self.curr_inc = inc # }}}
-        self.__eval_new_teams(inc)
-        self.__eval_new_LIDs(inc)
-        self.__eval_matches(inc)
+        # }}}
 
     def __eval_summary(self, summary):
-        ''' # {{{
-        Evaluate the `summary` dataframe.
-
-        Parameters:
-        summary(pandas.DataFrame):  Summary of the current iteration. (from env)
-                                        Includes 'Bankroll', 'Max_bet' and 'Min_bet'.
-        '''
+        # {{{
         self.today = summary['Date'][0]
-        self.curr_summary = summary # }}}
+        self.bankroll = summary['Bankroll'][0]
 
-    def __eval_bets(self,bets):
-        '''# {{{
-        Evaluate the `bets` dataframe.
+        if not self._no_copy:
+            self.curr_summary = summary
+        # }}}
 
-        Parameters:
-        bets(pandas.DataFrame): cast bets idexed by 'MatchID'
-        '''
-        self.__eval_matches(bets, check_for_new=False)
-        self.__eval_curr_betting_run(bets)
-        self.curr_bets = bets# }}}
+    def __eval_inc(self, inc):
+        # {{{
+        self.__eval_teams(inc, self._curr_inc_teams)
+        # self.__eval_matches(inc)
+
+        if not self._no_copy:
+            self.curr_inc = inc
+        # }}}
+
+    def __eval_opps(self, opps):
+        # {{{
+        self.__eval_teams(opps, self._curr_inc_teams)
+        # self.__eval_matches(opps)
+        # self.__eval_betting_run(opps)
+
+        if not self._no_copy:
+            self.curr_opps = opps
+        # }}}
 
     def __eval_P_dis(self, P_dis):
-        ''' # {{{
-        Associate the P_dis with the match.
-        '''
-        self.__eval_curr_betting_run(P_dis)
-        self.curr_P_dis = P_dis# }}}
+        # {{{
+        self.__eval_betting_run(P_dis)
 
-    # TODO: Make this method run faster. It will take a life time to be run if we want to run it as offten as we do. <13-11-20, kunzaatko> #
-    def __eval_new_teams(self, data_frame):
-# {{{
-        '''
-        Add new teams to `self.team_index`.
+        if not self._no_copy:
+            self.curr_P_dis = P_dis
+        # }}}
 
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` to get new teams from (`inc` and `opps`).
-                                        Has to include 'HID' and 'AID'.
-        '''
+    def __eval_bets(self, bets):
+        # {{{
+        self.__eval_matches(bets, check_for_new=False)
+        self.__eval_betting_run(bets)
+
+        if not self._no_copy:
+            self.curr_bets = bets
+        # }}}
+
+    def __eval_teams(self, data_frame, data_frame_teams):
+        # {{{
+
         if not data_frame.empty:
-            new_teams = pd.concat((data_frame['HID'], data_frame['AID'])).unique()
-            new_teams = new_teams[[new for new in range(len(new_teams)) if new_teams[new] not in self.team_index.index]]
-        else:
-            new_teams = []
 
-        for team in new_teams:
-            if team not in self.team_index.index:
-                self.team_index.loc[team] = {'LID': []}
-# }}}
+            ###############
+            #  NEW TEAMS  #
+            ###############
 
-    def __eval_new_LIDs(self, data_frame):
-        ''' # {{{
-        If team is playing in a league that it did not play before, associate the 'LID' with it. (mutates `self.teams['LIDs']`)
+            # teams that are already stored in the self.team_index
+            index_teams = self.team_index.index.to_numpy(dtype='int64')
+            # unique teams that are stored in the data frame
+            # data_frame_ID_LID = np.concatenate((data_frame[['HID','LID']].to_numpy(),data_frame[['AID','LID']].to_numpy()))
+            data_frame_teams_indexes = data_frame_teams
+            # teams in the data_frame that are not stored in the self.team_index
+            new_teams_index = np.setdiff1d(data_frame_teams_indexes, index_teams)
 
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` to get new LIDs from for the teams in `self.teams` (`inc` and `opps`).
-                                        Has to include 'HID', 'AID' and 'LID'.
-        '''
+            if not len(new_teams_index) == 0: # if there are any new teams (otherwise invalid indexing)
+                # new_teams_index = np.sort(data_frame_teams_indexes[new_teams_boolean_index])
+                # DataFrame of new teams
+                new_teams = pd.DataFrame(index=new_teams_index)
+                lids = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID'))).loc[new_teams_index] # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> #
+                # Making a list from the 'LID's
+                new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+                self.team_index = pd.concat((self.team_index, new_teams))
 
-        ID_LID = np.concatenate((data_frame[['HID', 'LID']].values,data_frame[['AID','LID']].values))
+            ##############
+            #  NEW LIDS  #
+            ##############
 
-        for ID,LID in ID_LID:
-            if LID not in self.team_index.at[ID,'LID']:
-                self.team_index.at[ID,'LID'].append(LID)# }}}
+            # NOTE: This could be optimised radically but it has shown to be a pain in the ass so this is it. If there will be a 'TLE' (time limit exceeded) error, this is the place to change <15-11-20, kunzaatko> #
 
-    def __eval_curr_teams(self, data_frame):
-        '''# {{{
-        Evaluate current teams from the data frame. They are used for better iterating and updating the features.
-        '''
-        self.curr_teams = np.concatenate((data_frame['HID'].values, data_frame['AID'].values))# }}}
+            # teams in the data_frame that are stored in the self.team_index (teams that could have been changed)
+            old_teams_index = np.intersect1d(index_teams,data_frame_teams_indexes)
+            old_teams_index_HID = np.intersect1d(old_teams_index, data_frame['HID'].to_numpy(dtype='int64'))
+            old_teams_index_AID = np.intersect1d(old_teams_index, data_frame['AID'].to_numpy(dtype='int64'))
 
-    def __eval_curr_betting_run(self, data_frame):
-        ''' # {{{
-        Evaluate the data_frame and add the data to the current betting run
-        '''
+            # lids = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID')))
+            # lids['ID'] = lids.index
+            # lids = lids.drop_duplicates(subset=['ID'])
+
+            for index in old_teams_index_HID:
+                if not type(data_frame.set_index('HID').loc[index]) == pd.DataFrame:
+                    if not data_frame.set_index('HID').loc[index]['LID'] in self.team_index.at[index,'LID']:
+                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+                else:
+                    if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.team_index.at[index,'LID']:
+                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+
+            for index in old_teams_index_AID:
+                if not type(data_frame.set_index('AID').loc[index]) == pd.DataFrame:
+                    if not data_frame.set_index('AID').loc[index]['LID'] in self.team_index.at[index,'LID']:
+                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+                else:
+                    if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.team_index.at[index,'LID']:
+                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+
+            # changed_old_teams = [ID for (ID,LID,LIDs) in zip(old_teams_index, data_frame.reindex(old_teams_index)['LID'].to_numpy(), self.team_index.reindex(old_teams_index)['LID'].to_numpy()) if LID in LIDs]
+            # self.team_index.reindex(changed_old_teams)['LID'] = self.team_index.reindex(changed_old_teams).apply(lambda row: np.append(row.LID, data_frame.at[row.name,'LID']))
+            # print(self.team_index.reindex(changed_old_teams).apply(lambda row: np.append(row.LID, data_frame.at[row.name,'LID'])))
+
+            # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
+
+
+    def __eval_betting_run(self, data_frame):
+        # {{{
         if self.curr_betting_run is None:
             self.curr_betting_run = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA'])
 
@@ -200,17 +238,11 @@ class Data:
         new_indexes = [match for match in data_frame.index if match not in existing_indexes] # matches to append to the self.matches as a whole
         new_matches = data_frame.loc[new_indexes]
         for i in new_matches.index:
-            self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches # }}}
+            self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches
+        # }}}
 
     def __eval_matches(self, data_frame, check_for_new=True):
-        ''' # {{{
-        Evalutate the matches and all the values for match in the dataframe.
-
-        Parameters:
-        data_frame(pd.DataFrame): must be indexed by the 'MatchID'
-        check_for_new=True(bool): for efectivity purposes... If we are adding the 'P_dis' or the 'Bets', we do not need to check for new teams.
-        '''
-
+        # {{{
         existing_indexes = [match for match in data_frame.index if match in self.matches.index] # matches that are already indexed
         existing_matches = data_frame.loc[existing_indexes]
         for i in existing_matches.index:
@@ -227,7 +259,7 @@ class Data:
         ''' # {{{
         End the current data agregation iteration. It has to be run after all the available data has been passed.
         '''
-        self.curr_P_dis = self.curr_summary = self.curr_bets = self.curr_inc = self.curr_opps = self.curr_betting_run = self.curr_teams = None# }}}
+        self.today = self.curr_P_dis = self.curr_summary = self.curr_bets = self.curr_inc = self.curr_opps = self.curr_betting_run  = None# }}}
 
         #####################################################################
         #  UPDATE THE FEATURES THAT CAN BE EXTRACTED FROM THE DATA IN SELF  #

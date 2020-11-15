@@ -30,6 +30,8 @@
 - [Repozitář soutěže (data, vyhodnocovací loop)](https://github.com/IDA-CTU/hackathon/)
 - [Odevzdávací systém](http://hyperion.felk.cvut.cz:8081/)
 
+### Pandas tutorial
+-[Tipy jak z dataframu vybírat data](https://towardsdatascience.com/an-ultimate-guide-to-time-series-analysis-in-pandas-76a0433621f3)
 
 | __Základní informace__ | |
 |:--------------:|------------------|

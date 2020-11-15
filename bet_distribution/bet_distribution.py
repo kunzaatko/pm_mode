@@ -80,8 +80,8 @@ class Bet_distribution:
                 self.summary['Bankroll'] -= bet
                 break
 
-            # TODO: Now returning empty log. Add something to the log to return. <11-11-20, kunzaatko> #
-            return log
+        # TODO: Now returning empty log. Add something to the log to return. <11-11-20, kunzaatko> #
+        return log
 
 
     def run_iter(self, summary, opps, P_dis):

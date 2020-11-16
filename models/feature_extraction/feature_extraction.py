@@ -182,7 +182,8 @@ class Data:
             if not len(index_new_teams) == 0: # if there are any new teams (otherwise invalid indexing)
                 # DataFrame of new teams
                 new_teams = pd.DataFrame(index=index_new_teams)
-                lids = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID'))).loc[index_new_teams] # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> # NOTE: This is probably working only because the inc already added some teams.
+                lids_frame = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID'))) # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> # NOTE: This is probably working only because the inc already added some teams.
+                lids = lids_frame[~lids_frame.index.duplicated(keep='first')].loc[index_new_teams]
                 # Making a list from the 'LID's
                 new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
                 self.team_index = pd.concat((self.team_index, new_teams))

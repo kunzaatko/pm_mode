@@ -59,7 +59,5 @@ class Model:
         if self.log is True:
             self.log = (log_model, log_bet_distribution)
 
-        self.data.end_data_agregation_iter()
-
         return self.bet_distribution.bets
 

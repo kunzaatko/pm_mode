@@ -12,11 +12,13 @@ class PoissonRegression(object):
     true in reality. Models then  calculates parameters representing attack and defense strengths for each team and
     model also includes home advantage parameter.
     """
-    def __init__(self):
+    def __init__(self, update_frequency=2):
         self.goal_data = pd.DataFrame()
         self.teams = set()
         self.model = None
         self.P_dis = None  # most recent P_dis
+        self.last_update = 0
+        self.update_frequency = update_frequency
         self.accuracy = pd.DataFrame()
 
     def _update_model(self):
@@ -96,7 +98,9 @@ class PoissonRegression(object):
         """
         self._update_teams(inc)
         self._update_goal_data(inc)
-        self._update_model()
+        if self.last_update % self.update_frequency == 0:
+            self._update_model()
+        self.last_update += 1
 
     def run_iter(self, inc, opps):
         """

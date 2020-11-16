@@ -69,12 +69,13 @@ class Data:
         # self.betting_runs = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA']) # `opps` that was passed with the associated `P_dis`, and the associated `bets` (series). Indexed by the date that it occured in opps.
         self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','BetH','BetD','BetA']) # All matches played by IDs ﭾ
 
+
         #########################
         #  Features attributes  #
         #########################
         # 'LID = Leagues' 'SC = score (pd.DataFrame(columns=['TEAM', 'OPPO']))', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'PLAYED = #matches_played (int)', 'NEW = new (bool)', 'ACU = accuracy (float)'
-        self.team_index = pd.DataFrame(columns=['LID','LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_NEW', 'LL_ACCU']) # recorded teams
-        self.time_data = pd.DataFrame(columns=['SL_SC', 'SL_RES', 'SL_PLAYED', 'SL_NEW', 'SL_ACCU']) # data frame for storing all the time characteristics for seasons
+        self.team_index = pd.DataFrame(columns=['LID','LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_ACCU']) # recorded teams
+        self.time_data = pd.DataFrame(columns=['SL_SC', 'SL_RES', 'SL_PLAYED', 'SL_ACCU']) # data frame for storing all the time characteristics for seasons
 
         # 'SC = score (TEAM, OPPO)', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'DATE = date', 'LM_SIDE = home/away (str)', 'LM_P_DIS = pd.DataFrame(columns=['win_p', 'draw_p', 'lose_p'])'
         self.last_match_data = pd.DataFrame(columns=['MatchID', 'LM_SC (T,O)', 'LM_RES (T,D,O)', 'LM_DATE', 'LM_SIDE (H,A)', 'LM_P_DIS (W,D,L)']) # data frame for storing all the Last-match characteristics
@@ -145,16 +146,12 @@ class Data:
         # {{{
         self._eval_teams(opps, self._curr_inc_teams)
         self._eval_matches(opps)
-        # self._eval_betting_run(opps)
-
         if not self._no_copy:
             self.curr_opps = opps
         # }}}
 
     def _eval_P_dis(self, P_dis):
         # {{{
-        # self._eval_betting_run(P_dis)
-
         if not self._no_copy:
             self.curr_P_dis = P_dis
         # }}}
@@ -162,8 +159,6 @@ class Data:
     def _eval_bets(self, bets):
         # {{{
         self._eval_matches(bets, check_for_new=False)
-        # self._eval_betting_run(bets)
-
         if not self._no_copy:
             self.curr_bets = bets
         # }}}
@@ -226,11 +221,6 @@ class Data:
         self.matches = self.matches.combine_first(data_frame)
         # }}}
 
-    # def _eval_betting_run(self, data_frame):
-    #     # {{{
-    #     self.betting_runs = self.betting_runs.combine_first(data_frame.set_index([np.full(len(data_frame),self.today),data_frame.index]))
-    #     # }}}
-
         #####################################################################
         #  UPDATE THE FEATURES THAT CAN BE EXTRACTED FROM THE DATA IN SELF  #
         #####################################################################
@@ -239,17 +229,29 @@ class Data:
         '''
         Update the features for the data stored in `self`.
         '''
-        self.__update_time_features()
-        self.__update_season_time_features()
-        self.__update_last_match_features()
+        self._update_time_features()
+        self._update_season_time_features()
+        self._update_last_match_features()
 
-    def __update_time_features(self):
+    def _update_time_features(self):
+        self._update_LL_time_features()
+
+    def _update_LL_time_features(self):
+        if self.today in self.matches['Date']:
+            matches_played_today = self.matches.groupby('Date').get_group(self.today)
+        else:
+            matches_played_today = None
+        self._update_LL_PLAYED(matches_played_today)
+
+    def _update_LL_PLAYED(self, matches_played_today):
+        if matches_played_today is not None:
+            teams_played = np.concatenate((matches_played_today['HID'].to_numpy(dtype='int64'),matches_played_today['AID'].to_numpy(dtype='int64')))
+            self.team_index['LL_PLAYED'].loc[teams_played] = self.team_index.reindex(teams_played)['LL_PLAYED'].apply(lambda row: pd.isnan(row) and 1 or row + 1)
+
+    def _update_last_match_features(self):
         pass
 
-    def __update_last_match_features(self):
-        pass
-
-    def __update_season_time_features(self):
+    def _update_season_time_features(self):
         pass
 
 

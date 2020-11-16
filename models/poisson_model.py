@@ -12,7 +12,8 @@ class PoissonRegression(object):
     true in reality. Models then  calculates parameters representing attack and defense strengths for each team and
     model also includes home advantage parameter.
     """
-    def __init__(self, update_frequency=2):
+    def __init__(self, data, update_frequency=2):
+        self.data = data
         self.goal_data = pd.DataFrame()
         self.teams = set()
         self.model = None
@@ -117,25 +118,10 @@ class PoissonRegression(object):
         #self._evaluate_accuracy(opps)
         return self.accuracy
 
-    def _evaluate_accuracy(self, opps):
+    def _evaluate_accuracy(self):
         """
-        FIXME in opps is not present H D A
-        Evaluates accuracy.
-        :param pred: np.ndarray:
-            [P(H), P(D), P(A)] X num_of_matches]
-        :param inc: pd.DataFrame:
-        :return: tuple:
-            (num_of_correctly_predicted/(num_of_all - num_of_not_present), num_of_correctly_predicted/num_of_all)
+        Calculates accuracy.
+        TODO calculate accuracy based on attributes stored in class Data in attribute self.data
+        :return:
         """
-        truemap = (opps[['H', 'D', 'A']]).to_numpy()  # assume that opps is not empty
-        forecast = self.P_dis.to_numpy() if self.P_dis is not None else None
-        max = (forecast == forecast.max(axis=1)[:, None]).astype(int)
-        missing = max.all(axis=1)
-        max = max[~missing]
-        truemap = truemap[~missing]
-        result = np.multiply(max, truemap).any(axis=1)
-
-        if forecast is not None and forecast.shape[0] != 0 and result.size != 0:
-            return len(np.where(result == True)[0]) / result.size, len(np.where(result == True)[0]) / forecast.shape[0]
-        else:
-            return None
+        pass

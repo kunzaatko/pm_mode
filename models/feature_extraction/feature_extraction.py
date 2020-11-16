@@ -34,7 +34,8 @@ class Data:
 
     '''
     # TODO: Add parameters to restrict the tracking of unneeded evaluation data elements <14-11-20, kunzaatko> #
-    def __init__(self, no_copy=True):
+    # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
+    def __init__(self, no_copy=True, sort_columns=True):
         '''
 
         Parameters:
@@ -45,6 +46,7 @@ class Data:
         #  private attributes  #
         ########################
         self._no_copy = no_copy
+        self._sort_columns = sort_columns
         self._curr_inc_teams= None # teams that are in inc
         self._curr_opps_teams= None # teams that are in opps
 
@@ -64,14 +66,14 @@ class Data:
         ##########################
         self.today = None # current date
         self.bankroll = None # current bankroll
-        self.betting_runs = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA']) # `opps` that was passed with the associated `P_dis`, and the associated `bets` (series). Indexed by the date that it occured in opps.
-        self.matches = pd.DataFrame(columns=['Date', 'Sea','LID','HID','AID','OddsH','OddsD','OddsA','HSC','ASC','H','D','A','BetH','BetD','BetA']) # All matches played by IDs ﭾ
+        # self.betting_runs = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA']) # `opps` that was passed with the associated `P_dis`, and the associated `bets` (series). Indexed by the date that it occured in opps.
+        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','BetH','BetD','BetA']) # All matches played by IDs ﭾ
 
         #########################
         #  Features attributes  #
         #########################
         # 'LID = Leagues' 'SC = score (pd.DataFrame(columns=['TEAM', 'OPPO']))', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'PLAYED = #matches_played (int)', 'NEW = new (bool)', 'ACU = accuracy (float)'
-        self.team_index = pd.DataFrame(columns=['LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_NEW', 'LL_ACCU']) # recorded teams
+        self.team_index = pd.DataFrame(columns=['LID','LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_NEW', 'LL_ACCU']) # recorded teams
         self.time_data = pd.DataFrame(columns=['SL_SC', 'SL_RES', 'SL_PLAYED', 'SL_NEW', 'SL_ACCU']) # data frame for storing all the time characteristics for seasons
 
         # 'SC = score (TEAM, OPPO)', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'DATE = date', 'LM_SIDE = home/away (str)', 'LM_P_DIS = pd.DataFrame(columns=['win_p', 'draw_p', 'lose_p'])'
@@ -99,11 +101,14 @@ class Data:
             self._eval_summary(summary)
 
         if inc is not None:
+            inc = inc.loc[:,~inc.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
             self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
             self._eval_inc(inc)
 
         if opps is not None:
+            opps = opps.loc[:,~opps.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
             self._curr_opps_teams = np.unique(np.concatenate((opps['HID'].to_numpy(dtype='int64'),opps['AID'].to_numpy(dtype='int64'))))
+            opps['opps_Date'] = self.today
             self._eval_opps(opps)
 
         if P_dis is not None:
@@ -111,6 +116,10 @@ class Data:
 
         if bets is not None:
             self._eval_bets(bets)
+
+        if self._sort_columns:
+            self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','BetH','BetD','BetA']]
+            self.team_index
 
         # }}}
 
@@ -135,7 +144,7 @@ class Data:
     def _eval_opps(self, opps):
         # {{{
         self._eval_teams(opps, self._curr_inc_teams)
-        # self._eval_matches(opps)
+        self._eval_matches(opps)
         # self._eval_betting_run(opps)
 
         if not self._no_copy:
@@ -144,7 +153,7 @@ class Data:
 
     def _eval_P_dis(self, P_dis):
         # {{{
-        self._eval_betting_run(P_dis)
+        # self._eval_betting_run(P_dis)
 
         if not self._no_copy:
             self.curr_P_dis = P_dis
@@ -153,7 +162,7 @@ class Data:
     def _eval_bets(self, bets):
         # {{{
         self._eval_matches(bets, check_for_new=False)
-        self._eval_betting_run(bets)
+        # self._eval_betting_run(bets)
 
         if not self._no_copy:
             self.curr_bets = bets
@@ -169,18 +178,16 @@ class Data:
             ###############
 
             # teams that are already stored in the self.team_index
-            index_teams = self.team_index.index.to_numpy(dtype='int64')
+            index_self_teams = self.team_index.index.to_numpy(dtype='int64')
             # unique teams that are stored in the data frame
-            # data_frame_ID_LID = np.concatenate((data_frame[['HID','LID']].to_numpy(),data_frame[['AID','LID']].to_numpy()))
-            data_frame_teams_indexes = data_frame_teams
+            index_data_frame = data_frame_teams
             # teams in the data_frame that are not stored in the self.team_index
-            new_teams_index = np.setdiff1d(data_frame_teams_indexes, index_teams)
+            index_new_teams = np.setdiff1d(index_data_frame, index_self_teams)
 
-            if not len(new_teams_index) == 0: # if there are any new teams (otherwise invalid indexing)
-                # new_teams_index = np.sort(data_frame_teams_indexes[new_teams_boolean_index])
+            if not len(index_new_teams) == 0: # if there are any new teams (otherwise invalid indexing)
                 # DataFrame of new teams
-                new_teams = pd.DataFrame(index=new_teams_index)
-                lids = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID'))).loc[new_teams_index] # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> #
+                new_teams = pd.DataFrame(index=index_new_teams)
+                lids = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID'))).loc[index_new_teams] # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> # NOTE: This is probably working only because the inc already added some teams.
                 # Making a list from the 'LID's
                 new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
                 self.team_index = pd.concat((self.team_index, new_teams))
@@ -192,15 +199,11 @@ class Data:
             # NOTE: This could be optimised radically but it has shown to be a pain in the ass so this is it. If there will be a 'TLE' (time limit exceeded) error, this is the place to change <15-11-20, kunzaatko> #
 
             # teams in the data_frame that are stored in the self.team_index (teams that could have been changed)
-            old_teams_index = np.intersect1d(index_teams,data_frame_teams_indexes)
-            old_teams_index_HID = np.intersect1d(old_teams_index, data_frame['HID'].to_numpy(dtype='int64'))
-            old_teams_index_AID = np.intersect1d(old_teams_index, data_frame['AID'].to_numpy(dtype='int64'))
+            index_old_teams = np.intersect1d(index_self_teams,index_data_frame)
+            index_old_teams_HID = np.intersect1d(index_old_teams, data_frame['HID'].to_numpy(dtype='int64'))
+            index_old_teams_AID = np.intersect1d(index_old_teams, data_frame['AID'].to_numpy(dtype='int64'))
 
-            # lids = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID')))
-            # lids['ID'] = lids.index
-            # lids = lids.drop_duplicates(subset=['ID'])
-
-            for index in old_teams_index_HID:
+            for index in index_old_teams_HID:
                 if not type(data_frame.set_index('HID').loc[index]) == pd.DataFrame:
                     if not data_frame.set_index('HID').loc[index]['LID'] in self.team_index.at[index,'LID']:
                         self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
@@ -208,7 +211,7 @@ class Data:
                     if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.team_index.at[index,'LID']:
                         self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
 
-            for index in old_teams_index_AID:
+            for index in index_old_teams_AID:
                 if not type(data_frame.set_index('AID').loc[index]) == pd.DataFrame:
                     if not data_frame.set_index('AID').loc[index]['LID'] in self.team_index.at[index,'LID']:
                         self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
@@ -216,51 +219,17 @@ class Data:
                     if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.team_index.at[index,'LID']:
                         self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
 
-            # changed_old_teams = [ID for (ID,LID,LIDs) in zip(old_teams_index, data_frame.reindex(old_teams_index)['LID'].to_numpy(), self.team_index.reindex(old_teams_index)['LID'].to_numpy()) if LID in LIDs]
-            # self.team_index.reindex(changed_old_teams)['LID'] = self.team_index.reindex(changed_old_teams).apply(lambda row: np.append(row.LID, data_frame.at[row.name,'LID']))
-            # print(self.team_index.reindex(changed_old_teams).apply(lambda row: np.append(row.LID, data_frame.at[row.name,'LID'])))
-
             # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
 
     def _eval_matches(self, data_frame, check_for_new=True):
         # {{{
-        # TODO: change this to concatenation <15-11-20, kunzaatko> #
-        existing_indexes = [match for match in data_frame.index if match in self.matches.index] # matches that are already indexed
-        existing_matches = data_frame.loc[existing_indexes]
-        for i in existing_matches.index:
-            for key in existing_matches.columns:
-                self.matches.at[i,key] = data_frame.at[i,key] # we assume that the newer dataframe is right
-
-        if check_for_new:
-            new_indexes = [match for match in data_frame.index if match not in existing_indexes] # matches to append to the self.matches as a whole
-            new_matches = data_frame.loc[new_indexes]
-            for i in new_matches.index:
-                self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches}}}
-
-    def _eval_betting_run(self, data_frame):
-        # {{{
-        if self.curr_betting_run is None:
-            self.curr_betting_run = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA'])
-
-        existing_indexes = [match for match in data_frame.index if match in self.curr_betting_run.index] # matches that are already indexed
-        existing_matches = data_frame.loc[existing_indexes]
-
-        for i in existing_matches.index:
-            for key in existing_matches.columns:
-                self.matches.at[i,key] = data_frame.at[i,key] # we assume that the newer dataframe is right
-
-        new_indexes = [match for match in data_frame.index if match not in existing_indexes] # matches to append to the self.matches as a whole
-        new_matches = data_frame.loc[new_indexes]
-        for i in new_matches.index:
-            self.matches.loc[i] = new_matches.loc[i] # copy all of the previously  unknown matches to matches
+        self.matches = self.matches.combine_first(data_frame)
         # }}}
 
-    # DEPRECATED
-    def end_data_agregation_iter(self):
-        ''' # {{{
-        End the current data agregation iteration. It has to be run after all the available data has been passed.
-        '''
-        self.today = self.curr_P_dis = self.curr_summary = self.curr_bets = self.curr_inc = self.curr_opps = self.curr_betting_run  = None# }}}
+    # def _eval_betting_run(self, data_frame):
+    #     # {{{
+    #     self.betting_runs = self.betting_runs.combine_first(data_frame.set_index([np.full(len(data_frame),self.today),data_frame.index]))
+    #     # }}}
 
         #####################################################################
         #  UPDATE THE FEATURES THAT CAN BE EXTRACTED FROM THE DATA IN SELF  #

@@ -21,6 +21,7 @@ There are two types of public attributes:
   - `self.LL_data` (`pandas.DataFrame`) [__feature attribute__]
 
     LL: life-long
+
  | __index__   | `'LID'`          | `'LL_Goals_Scored'` | `'LL_Goals_Conceded'` | `'LL_Wins'` | `'LL_Draws'` | `'LL_Loses'` | `'LL_Played'`  | `'LL_Accu'`    |
  | :-      | :-:              | :-:                 | :-:                   | :-:         | :-:          | :-:          | :-:            | :-:            |
  | team ID | league ID (list) | goals scored        | goals conceded        | wins        | draws        | loses        | played matches | model accuracy |
@@ -29,6 +30,7 @@ There are two types of public attributes:
   - `self.SL_data` (`pandas.DataFrame`) [__feature attribute__]
 
     SL: season-long
+
  | __index (multi index)__ | `'LID'`          | `'SL_Goals_Scored'` | `'SL_Goals_Conceded'` | `'SL_Wins'` | `'SL_Draws'` | `'SL_Loses'` | `'SL_Played'`  | `'SL_Accu'`    |
  | :-                 | :-:              | :-:                 | :-:                   | :-:         | :-:          | :-:          | :-:            | :-:            |
  | season,team ID     | league ID (list) | goals scored        | goals conceded        | wins        | draws        | loses        | played matches | model accuracy |

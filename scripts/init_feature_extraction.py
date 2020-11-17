@@ -17,3 +17,4 @@ summary = [env.generate_summary(date) for date in pd.date_range(start=limits['st
 
 for o,i,s in zip(opps,inc,summary):
     data.update_data(opps=o,inc=i,summary=s)
+    data.update_features()

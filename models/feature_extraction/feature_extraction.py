@@ -1,85 +1,75 @@
 import numpy as np
 import pandas as pd
 
-'''
-enum of (wanted) characteristics:
----------------------------------
-
-##########################
-#  TIME CHARACTERISTICS  #
-##########################
-Season-long: season-long score ('SL_SC'), season-long win-lose ratio ('SL_RES'), season-long matches played ('SL_PLAY')
-Life-long: life-long score ('LL_SC'), life-long win-lose ratio ('LL_RES'), life-long matches played ('LL_PLAY')
-
-###########################
-#  MATCH CHARACTERISTICS  #
-###########################
-Last-match: last-match score ('LM_SC'), last-match result ('LM_RES'), last-match oppo ('LM_OPPO'), last-match P_dis ('LM_P_DIS') last-match date ('LM_DATE')
-Last-match-with: last-match-with score ('LMW_SC'), last-match-with result ('LMW_RES'), last-match-with P_dis ('LMW_P_DIS'), last-match-with date ('LMW_DATE')
-
-'''
-
 class Data:
     '''
     Class for manipulating the data and extracting characteristics.
 
     Attributes:
-        today (None): current date (`pandas._libs.tslibs.timestamps.Timestamp`)
-
-        curr_opps (None): current iteration `opps` (`pd.DataFrame` - `Index(['Sea', 'Date', 'LID', 'HID', 'AID', 'Open', 'OddsH', 'OddsD', 'OddsA', 'BetH', 'BetD', 'BetA'], dtype='object')`)
-
-        curr_inc (None): current iteration `inc` (`pd.DataFrame` - `Index(['Sea', 'Date', 'LID', 'HID', 'AID', 'Open', 'OddsH', 'OddsD', 'OddsA', 'HSC', 'ASC', 'H', 'D', 'A', 'BetH', 'BetD', 'BetA'], dtype='object')`)
-
-        curr_bets (None): current iteration `bets` (`pd.DataFrame` - `Index([`BetH`, 'BetD', 'BetA'], dtype='object')`)
-
+        today (pd.datetime64): current date (`pandas._libs.tslibs.timestamps.Timestamp`)
+        self.bankroll (int): bankroll from the summary
     '''
-    # TODO: Add parameters to restrict the tracking of unneeded evaluation data elements <14-11-20, kunzaatko> #
-    # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
-    def __init__(self, no_copy=True, sort_columns=True):
-        '''
 
+    # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
+    def __init__(self, sort_columns=True):
+        '''
         Parameters:
-            no_copy(bool): Whether to store the `curr_opps`, `curr_inc`, `curr_P_dis`, and `curr_bets` to `self`. This will make the it run faster.
+            sort_columns(True): Sort the columns of the dataframes
         '''
 
         ########################
         #  private attributes  #
         ########################
-        self._no_copy = no_copy
         self._sort_columns = sort_columns
         self._curr_inc_teams= None # teams that are in inc
         self._curr_opps_teams= None # teams that are in opps
 
-
         ########################
         #  Storage attributes  #
         ########################
-        self.curr_summary = None # current `summary` ﭾ
-        self.curr_bets = None # current `bets` ﭾ
-        self.curr_opps = None # current `opps` ﭾ
-        self.curr_inc = None # current `inc` ﭾ
-        self.curr_P_dis = None # current `P_dis` ﭾ
-
+        self.today = None # current date
+        self.bankroll = None # current bankroll
 
         ##########################
         #  Essential attributes  #
         ##########################
-        self.today = None # current date
-        self.bankroll = None # current bankroll
-        # self.betting_runs = pd.DataFrame(columns = ['Sea','LID', 'HID','AID','OddsH','OddsD','OddsA','P(H)', 'P(D)', 'P(A)','BetH','BetD','BetA']) # `opps` that was passed with the associated `P_dis`, and the associated `bets` (series). Indexed by the date that it occured in opps.
-        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','BetH','BetD','BetA']) # All matches played by IDs ﭾ
+        # FIXME: The 'opps_Date' column is does not work, since we get multiple the matches with the same ID for several consecutive days <16-11-20, kunzaatko> #
+        # FIXME: Also the P_dis that is evaluated by our model can change from day to day so the P_dis, that we have stored is only the last one <16-11-20, kunzaatko> #
+
+        # `self.matches`
+        # index    || 'opps_Date'            | 'Sea'  | 'Date'       | 'Open'                      | 'LID'           | 'HID'        | 'AID'
+        # match ID || date of opps occurence | season | date of play | date of betting possibility | league ID (str) | home team ID | away team ID
+        #           | 'HSC'             | 'ASC'             | 'H'      | 'D'  | 'A'      | 'OddsH'          | 'OddsD'      | 'OddsA'
+        #           | home goals scored | away goals scored | home win | draw | away win | odds of home win | odds of draw | odds of away win
+        #           | 'P(H)'               | 'P(D)'           | 'P(A)'               | 'BetH'       | 'BetD'   | 'BetA'
+        #           | model prob. home win | model prob. draw | model prob. away win | bet home win | bet draw | bet away win
+
+        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']) # All matches played by IDs ﭾ
 
 
         #########################
         #  Features attributes  #
         #########################
-        # 'LID = Leagues' 'SC = score (pd.DataFrame(columns=['TEAM', 'OPPO']))', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'PLAYED = #matches_played (int)', 'NEW = new (bool)', 'ACU = accuracy (float)'
-        self.team_index = pd.DataFrame(columns=['LID','LL_SC', 'LL_RES', 'LL_PLAYED', 'LL_ACCU']) # recorded teams
-        self.time_data = pd.DataFrame(columns=['SL_SC', 'SL_RES', 'SL_PLAYED', 'SL_ACCU']) # data frame for storing all the time characteristics for seasons
 
-        # 'SC = score (TEAM, OPPO)', 'RES = result (pd.DataFrame(columns=['TEAM', 'DRAW', 'OPPO']))', 'DATE = date', 'LM_SIDE = home/away (str)', 'LM_P_DIS = pd.DataFrame(columns=['win_p', 'draw_p', 'lose_p'])'
-        self.last_match_data = pd.DataFrame(columns=['MatchID', 'LM_SC (T,O)', 'LM_RES (T,D,O)', 'LM_DATE', 'LM_SIDE (H,A)', 'LM_P_DIS (W,D,L)']) # data frame for storing all the Last-match characteristics
-        self.matches_data = pd.DataFrame(columns=['M_DATA_FRAME']) # data frame for moving the data of the last match when a new match is played
+        # `self.team_index`
+        # LL: life-long
+        # index   || 'LID'            | 'LL_Goals_Scored' | 'LL_Goals_Conceded' | 'LL_Wins' | 'LL_Draws' | 'LL_Loses' | 'LL_Played'    | 'LL_Accu'
+        # team ID || league ID (list) | goals scored      | goals conceded      | wins      | draws      | loses      | played matches | model accuracy
+        self.team_index = pd.DataFrame(columns=['LID','LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']) # recorded teams
+
+        # `self.time_data`
+        # SL: season-long
+        # index          || 'SL_Goals_Scored' | 'SL_Goals_Conceded' | 'SL_Wins' | 'SL_Draws' | 'SL_Loses' | 'SL_Played'    | 'SL_Accu'
+        # season,team ID || goals scored      | goals conceded      | wins      | draws      | loses      | played matches | model accuracy
+        self.time_data = pd.DataFrame(columns=['SL_Goals_Scored', 'SL_Goals_Conceded', 'SL_Wins', 'SL_Draws', 'SL_Loses', 'SL_Played', 'SL_Accu']) # data frame for storing all the time characteristics for seasons
+
+
+        # `self.match_data`
+        # index   || 'MatchID' | 'Date'       | 'Oppo'      | 'Side'       | 'M_Goals_Scored' | 'M_Goals_Conceded' | 'M_Win'   | 'M_Draw'
+        # team ID || match ID  | date of play | opponent id | side of play | goals scored     | goals concede      | match win | match draw
+        #          | 'M_Lose'   | 'M_P(Win)'      | 'M_P(Draw)'      | 'M_P(Lose)'      | 'M_Accu'
+        #          | match lose | model prob. win | model prob. draw | model prob. lose | model accuracy
+        self.match_data = pd.DataFrame(columns=['MatchID', 'Date' , 'Oppo', 'Side',  'M_Goals_Scored', 'M_Goals_Conceded', 'M_Win','M_Draw', 'M_Lose','M_P(Win)','M_P(Draw)', 'M_P(Lose)','M_Accu'])
 
 
     ######################################
@@ -128,39 +118,28 @@ class Data:
         # {{{
         self.today = summary['Date'][0]
         self.bankroll = summary['Bankroll'][0]
-
-        if not self._no_copy:
-            self.curr_summary = summary
         # }}}
 
     def _eval_inc(self, inc):
         # {{{
         self._eval_teams(inc, self._curr_inc_teams)
         self._eval_matches(inc)
-
-        if not self._no_copy:
-            self.curr_inc = inc
         # }}}
 
     def _eval_opps(self, opps):
         # {{{
         self._eval_teams(opps, self._curr_inc_teams)
         self._eval_matches(opps)
-        if not self._no_copy:
-            self.curr_opps = opps
         # }}}
 
     def _eval_P_dis(self, P_dis):
         # {{{
-        if not self._no_copy:
-            self.curr_P_dis = P_dis
+        self._eval_matches(P_dis)
         # }}}
 
     def _eval_bets(self, bets):
         # {{{
-        self._eval_matches(bets, check_for_new=False)
-        if not self._no_copy:
-            self.curr_bets = bets
+        self._eval_matches(bets)
         # }}}
 
     def _eval_teams(self, data_frame, data_frame_teams):
@@ -217,7 +196,7 @@ class Data:
 
             # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
 
-    def _eval_matches(self, data_frame, check_for_new=True):
+    def _eval_matches(self, data_frame):
         # {{{
         self.matches = self.matches.combine_first(data_frame)
         # }}}
@@ -230,12 +209,17 @@ class Data:
         '''
         Update the features for the data stored in `self`.
         '''
-        self._update_time_features()
+        self._update_LL_time_features()
+        self._update_time_data()
         self._update_season_time_features()
         self._update_last_match_features()
 
-    def _update_time_features(self):
-        self._update_LL_time_features()
+    def _update_time_data(self):
+        '''
+        Populate the `time_data` attribute from `matches`.
+        '''
+        # TODO: should be done incrementaly <17-11-20, kunzaatko> #
+        pass
 
     def _update_LL_time_features(self):
         if self.today in self.matches['Date']:
@@ -256,89 +240,20 @@ class Data:
         pass
 
 
-    # ┌─────────────────┐
-    # │ LAST MATCH WITH │
-    # └─────────────────┘
-
-    def last_match_with(self, oppo_ID, ID=None):
-        '''
-        Characteristics of the last match with specific opponent.
-
-        Parameters:
-        oppo_ID(int): ID of the opponent.
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
-        '''
-        pass
-
-    def last_match_with_score(self, oppo_ID, ID=None):
-        '''
-        Score in the last match with specific opponent.
-
-        Parameters:
-        oppo_ID(int): ID of the opponent.
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
-
-        Returns:
-        (pd.DataFrame(columns=['TEAM', 'OPPO'])) = SC == score
-        '''
-        pass
-
-    def last_match_with_date(self, oppo_ID, ID=None):
-        '''
-        Returns the date of the last match with specific opponent.
-
-        Parameters:
-        oppo_ID(int): ID of the opponent.
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
-        '''
-        pass
-
-
-    # ┌────────────┐
-    # │ LAST MATCH │
-    # └────────────┘
-
-    def last_match(self, ID=None):
-        '''
-        Characteristics of the last match.
-
-        Parameters:
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
-        '''
-        pass
-
-    def last_match_score(self, ID=None):
-        '''
-        Score last match.
-
-        Parameters:
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
-
-        Returns:
-        (pd.DataFrame(columns=['TEAM', 'OPPO'])) = SC == score
-        '''
-        pass
-
-    def last_match_date(self, ID=None):
-        '''
-        Returns the date of the last match.
-
-        Parameters:
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
-        '''
-        pass
-
     # ┌─────────────────────┐
     # │ MATCHES GLOBAL DATA │
     # └─────────────────────┘
 
-    def matches_with(self, oppo_ID, ID=None):
+    def matches_with(self, ID, oppo_ID):
         '''
         Returns all the matches with a particular opponent.
 
         Parameters:
-        oppo_ID(int): ID of the opponent.
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
+            oppo_ID(int): ID of the opponent.
+            ID(int): team id
+
+        Returns:
+            pd.DataFrame
         '''
         pass
 
@@ -346,21 +261,28 @@ class Data:
     # │ LIFE-LONG CHARACTERISTICS │
     # └───────────────────────────┘
 
-    def total_score_to_match(self, ID=None):
+    def total_scored_goals_to_match(self, ID, number_of_matches):
         '''
-        Total life-long score to match ratio. ()
+        Total life-long score to match ratio.
 
         Parameters:
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
+            ID(int): team id
+            number_of_matches(int): num
+
+        Returns:
+            float: scored goals /
         '''
         pass
 
-    def home_to_away_r(self, ID=None):
+    def home_win_r(self):
         '''
-        Win rate for home and away.
+        Win rate for win when home.
 
         Parameters:
-        ID(int/None): If `None`, then it is returned for all teams. If `ID=id` then only returned for the team `id`.
+            ID(int): team index
+
+        Returns:
+            float: rate of win, when home
         '''
         pass
 

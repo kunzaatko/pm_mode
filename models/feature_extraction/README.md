@@ -18,7 +18,7 @@ There are two types of public attributes:
  | match ID  | date of opps occurrence | season  | date of play | date of betting possibility | league ID (str) | home team ID | away    | home goals scored | away goals scored | home win | draw  | away win | odds of home win | odds of draw | odds of   | model prob. home win | model prob. draw | model prob. away win | bet home win | bet draw | bet away win away winteam ID |
 
 
-  - `self.LL_data` (`pandas.DataFrame`)
+  - `self.LL_data` (`pandas.DataFrame`) [__feature attribute__]
 
     LL: life-long
  | __index__   | `'LID'`          | `'LL_Goals_Scored'` | `'LL_Goals_Conceded'` | `'LL_Wins'` | `'LL_Draws'` | `'LL_Loses'` | `'LL_Played'`  | `'LL_Accu'`    |
@@ -26,14 +26,14 @@ There are two types of public attributes:
  | team ID | league ID (list) | goals scored        | goals conceded        | wins        | draws        | loses        | played matches | model accuracy |
 
 
-  - `self.SL_data` (`pandas.DataFrame`)
+  - `self.SL_data` (`pandas.DataFrame`) [__feature attribute__]
 
     SL: season-long
  | __index (multi index)__ | `'LID'`          | `'SL_Goals_Scored'` | `'SL_Goals_Conceded'` | `'SL_Wins'` | `'SL_Draws'` | `'SL_Loses'` | `'SL_Played'`  | `'SL_Accu'`    |
  | :-                 | :-:              | :-:                 | :-:                   | :-:         | :-:          | :-:          | :-:            | :-:            |
  | season,team ID     | league ID (list) | goals scored        | goals conceded        | wins        | draws        | loses        | played matches | model accuracy |
 
-  - `self.match_data` (`pandas.DataFrame`)
+  - `self.match_data` (`pandas.DataFrame`) [__feature attribute__]
 
  | __index__ | `'MatchID'` | `'Sea'` | `'Date'`     | `'Oppo'`    | `'Home'`     | `'Away'`     | `'M_Goals_Scored'` | `'M_Goals_Conceded'` | `'M_Win'` | `'M_Draw'` | `'M_Lose'` | `'M_P(Win)'`    | `'M_P(Draw)'`    | `'M_P(Lose)'`    | `'M_Accu'`     |
  | :-        | :-:         | :-:     | :-:          | :-:         | :-:          | :-:          | :-:                | :-:                  | :-:       | :-:        | :-:        | :-:             | :-:              | :-:              | :-:            |

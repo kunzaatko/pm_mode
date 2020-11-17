@@ -51,24 +51,28 @@ class Data:
         #  Features attributes  #
         #########################
 
-        # `self.team_index`
+        # `self.LL_data`
         # LL: life-long
-        # index   || 'LID'            | 'LL_Goals_Scored' | 'LL_Goals_Conceded' | 'LL_Wins' | 'LL_Draws' | 'LL_Loses' | 'LL_Played'    | 'LL_Accu'
-        # team ID || league ID (list) | goals scored      | goals conceded      | wins      | draws      | loses      | played matches | model accuracy
-        self.team_index = pd.DataFrame(columns=['LID','LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']) # recorded teams
+        # index   || 'LID'            | 'LL_Goals_Scored' | 'LL_Goals_Conceded' | 'LL_Wins' | 'LL_Draws' | 'LL_Loses'
+        # team ID || league ID (list) | goals scored      | goals conceded      | wins      | draws      | loses
+        #          | 'LL_Played'    | 'LL_Accu'
+        #          | played matches | model accuracy
+        self.LL_data = pd.DataFrame(columns=['LID','LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']) # recorded teams
 
-        # `self.time_data`
+        # `self.SL_data`
         # SL: season-long
-        # index          || 'SL_Goals_Scored' | 'SL_Goals_Conceded' | 'SL_Wins' | 'SL_Draws' | 'SL_Loses' | 'SL_Played'    | 'SL_Accu'
-        # season,team ID || goals scored      | goals conceded      | wins      | draws      | loses      | played matches | model accuracy
-        self.time_data = pd.DataFrame(columns=['SL_Goals_Scored', 'SL_Goals_Conceded', 'SL_Wins', 'SL_Draws', 'SL_Loses', 'SL_Played', 'SL_Accu']) # data frame for storing all the time characteristics for seasons
+        # index (multiindex)|| 'LID'            | 'SL_Goals_Scored' | 'SL_Goals_Conceded' | 'SL_Wins' | 'SL_Draws' | 'SL_Loses'
+        # season,team ID    || league ID (list) | goals scored      | goals conceded      | wins      | draws      | loses
+        #                    | 'SL_Played'    | 'SL_Accu'
+        #                    | played matches | model accuracy
+        self.SL_data = pd.DataFrame(columns=['LID','SL_Goals_Scored', 'SL_Goals_Conceded', 'SL_Wins', 'SL_Draws', 'SL_Loses', 'SL_Played', 'SL_Accu']) # data frame for storing all the time characteristics for seasons
 
 
         # `self.match_data`
-        # index   || 'MatchID' | 'Date'       | 'Oppo'      | 'Home'       | 'Away'       | 'M_Goals_Scored' | 'M_Goals_Conceded' | 'M_Win'   | 'M_Draw'
-        # team ID || match ID  | date of play | opponent id | team is home | team is away | goals scored     | goals concede      | match win | match draw
-        #          | 'M_Lose'   | 'M_P(Win)'      | 'M_P(Draw)'      | 'M_P(Lose)'      | 'M_Accu'
-        #          | match lose | model prob. win | model prob. draw | model prob. lose | model accuracy
+        # index   || 'MatchID' | 'Sea'  | 'Date'       | 'Oppo'      | 'Home'       | 'Away'       | 'M_Goals_Scored' | 'M_Goals_Conceded'
+        # team ID || match ID  | season | date of play | opponent id | team is home | team is away | goals scored     | goals conceded
+        #          | 'M_Win'   | 'M_Draw'  | 'M_Lose'   | 'M_P(Win)'      | 'M_P(Draw)'      | 'M_P(Lose)'      | 'M_Accu'
+        #          | match win | match draw| match lose | model prob. win | model prob. draw | model prob. lose | model accuracy
         self.match_data = pd.DataFrame(columns=['MatchID', 'Date' , 'Oppo', 'Home', 'Away',  'M_Goals_Scored', 'M_Goals_Conceded', 'M_Win','M_Draw', 'M_Lose','M_P(Win)','M_P(Draw)', 'M_P(Lose)','M_Accu'])
 
 
@@ -110,7 +114,7 @@ class Data:
 
         if self._sort_columns:
             self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
-            self.team_index = self.team_index[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']]
+            self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']]
 
         # }}}
 
@@ -151,11 +155,11 @@ class Data:
             #  NEW TEAMS  #
             ###############
 
-            # teams that are already stored in the self.team_index
-            index_self_teams = self.team_index.index.to_numpy(dtype='int64')
+            # teams that are already stored in the self.LL_data
+            index_self_teams = self.LL_data.index.to_numpy(dtype='int64')
             # unique teams that are stored in the data frame
             index_data_frame = data_frame_teams
-            # teams in the data_frame that are not stored in the self.team_index
+            # teams in the data_frame that are not stored in the self.LL_data
             index_new_teams = np.setdiff1d(index_data_frame, index_self_teams)
 
             if not len(index_new_teams) == 0: # if there are any new teams (otherwise invalid indexing)
@@ -165,7 +169,7 @@ class Data:
                 lids = lids_frame[~lids_frame.index.duplicated(keep='first')].loc[index_new_teams]
                 # Making a list from the 'LID's
                 new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
-                self.team_index = pd.concat((self.team_index, new_teams))
+                self.LL_data = pd.concat((self.LL_data, new_teams))
 
             ##############
             #  NEW LIDS  #
@@ -173,26 +177,26 @@ class Data:
 
             # NOTE: This could be optimised radically but it has shown to be a pain in the ass so this is it. If there will be a 'TLE' (time limit exceeded) error, this is the place to change <15-11-20, kunzaatko> #
 
-            # teams in the data_frame that are stored in the self.team_index (teams that could have been changed)
+            # teams in the data_frame that are stored in the self.LL_data (teams that could have been changed)
             index_old_teams = np.intersect1d(index_self_teams,index_data_frame)
             index_old_teams_HID = np.intersect1d(index_old_teams, data_frame['HID'].to_numpy(dtype='int64'))
             index_old_teams_AID = np.intersect1d(index_old_teams, data_frame['AID'].to_numpy(dtype='int64'))
 
             for index in index_old_teams_HID:
                 if not type(data_frame.set_index('HID').loc[index]) == pd.DataFrame:
-                    if not data_frame.set_index('HID').loc[index]['LID'] in self.team_index.at[index,'LID']:
-                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+                    if not data_frame.set_index('HID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
+                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
                 else:
-                    if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.team_index.at[index,'LID']:
-                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+                    if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
+                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
 
             for index in index_old_teams_AID:
                 if not type(data_frame.set_index('AID').loc[index]) == pd.DataFrame:
-                    if not data_frame.set_index('AID').loc[index]['LID'] in self.team_index.at[index,'LID']:
-                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+                    if not data_frame.set_index('AID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
+                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
                 else:
-                    if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.team_index.at[index,'LID']:
-                        self.team_index.at[index,'LID'] = np.append(self.team_index.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+                    if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
+                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
 
             # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
 
@@ -211,13 +215,13 @@ class Data:
         '''
         Update the features for the data stored in `self`.
         '''
-        self._UPDATE_team_index_features()
-        self._UPDATE_time_data_features()
+        self._UPDATE_LL_data_features()
+        self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
 
-    def _UPDATE_team_index_features(self):
+    def _UPDATE_LL_data_features(self):
         '''
-        Populate all the features from the frame `self.team_index`
+        Populate all the features from the frame `self.LL_data`
         '''
         if self.today in self.matches['Date']:
             # a dataframe of all the todays matches (matches that where played on `self.today`)
@@ -232,32 +236,32 @@ class Data:
     def _update_LL_Played(self, matches_played_today):
         if matches_played_today is not None:
             teams_played = np.concatenate((matches_played_today['HID'].to_numpy(dtype='int64'),matches_played_today['AID'].to_numpy(dtype='int64')))
-            self.team_index['LL_Played'].loc[teams_played] = self.team_index.reindex(teams_played)['LL_Played'].apply(lambda row: pd.isnan(row) and 1 or row + 1)
+            self.LL_data['LL_Played'].loc[teams_played] = self.LL_data.reindex(teams_played)['LL_Played'].apply(lambda row: pd.isnan(row) and 1 or row + 1)
 
     def _update_LL_Goals(self, matches_played_today):
         '''
-        Update 'LL_Goals_Scored' and 'LL_Goals_Conceded' of the frame `self.team_index`
+        Update 'LL_Goals_Scored' and 'LL_Goals_Conceded' of the frame `self.LL_data`
         '''
         if matches_played_today is not None:
             pass
 
     def _update_LL_Res(self, matches_played_today):
         '''
-        Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.team_index`
+        Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.LL_data`
         '''
         if matches_played_today is not None:
             pass
 
     def _update_LL_Accu(self, matches_played_today):
         '''
-        Update 'LL_Accu' of the frame `self.team_index`
+        Update 'LL_Accu' of the frame `self.LL_data`
         '''
         if matches_played_today is not None:
             pass
 
-    def _UPDATE_time_data_features(self):
+    def _UPDATE_SL_data_features(self):
         '''
-        Populate all the features of `self.time_data`
+        Populate all the features of `self.SL_data`
         '''
         # TODO: should be done incrementaly <17-11-20, kunzaatko> #
         if self.today in self.matches['Date']:
@@ -274,7 +278,7 @@ class Data:
     # TODO: Could be unified with `_update_LL_Goals` as `_update_Goals` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Goals(self, matches_played_today):
         '''
-        Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.team_index`
+        Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.LL_data`
         '''
         pass
 
@@ -289,7 +293,7 @@ class Data:
     # TODO: Could be unified with `_update_LL_Accu` as `_update_Accu` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Accu(self, matches_played_today):
         '''
-        Update 'SL_Accu' of the frame `self.team_index`
+        Update 'SL_Accu' of the frame `self.LL_data`
         '''
         pass
 

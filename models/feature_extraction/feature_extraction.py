@@ -254,7 +254,8 @@ class Data:
         if matches_played is not None:
             teams_played = np.unique(np.concatenate((matches_played['HID'].to_numpy(dtype='int64'),
                                                      matches_played['AID'].to_numpy(dtype='int64'))), return_counts=True)
-            self.LL_data['LL_Played'].loc[teams_played[0]] = self.LL_data['LL_Played'].loc[teams_played[0]] + teams_played[1]
+            self.LL_data.loc[teams_played[0], 'LL_Played'] = self.LL_data.loc[teams_played[0], 'LL_Played'] + \
+                                                             teams_played[1]
 
     def _update_LL_Goals(self, matches_played):
         '''
@@ -269,10 +270,10 @@ class Data:
 
             scored = fast(teams_goals_scored, teams)
             conceded = fast(teams_goals_conceded, teams)
-            self.LL_data['LL_Goals_Scored'].loc[scored[:, 0]] = \
-                self.LL_data['LL_Goals_Scored'].loc[scored[:, 0]] + scored[:, 1]
-            self.LL_data['LL_Goals_Conceded'].loc[conceded[:, 0]] = \
-                self.LL_data['LL_Goals_Conceded'].loc[conceded[:, 0]] + conceded[:, 1]
+            self.LL_data.loc[scored[:, 0], 'LL_Goals_Scored'] = \
+                self.LL_data.loc[scored[:, 0], 'LL_Goals_Scored'] + scored[:, 1]
+            self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] = \
+                self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] + conceded[:, 1]
 
     def _update_LL_Res(self, matches_played):
         '''
@@ -291,12 +292,9 @@ class Data:
             loses = fast(teams_loses, teams)
             draws = fast(teams_draws, teams)
 
-            self.LL_data['LL_Wins'].loc[wins[:, 0]] = \
-                self.LL_data['LL_Wins'].loc[wins[:, 0]] + wins[:, 1]
-            self.LL_data['LL_Loses'].loc[loses[:, 0]] = \
-                self.LL_data['LL_Loses'].loc[loses[:, 0]] + loses[:, 1]
-            self.LL_data['LL_Draws'].loc[draws[:, 0]] = \
-                self.LL_data['LL_Draws'].loc[draws[:, 0]] + draws[:, 1]
+            self.LL_data.loc[wins[:, 0], 'LL_Wins'] = self.LL_data.loc[wins[:, 0], 'LL_Wins'] + wins[:, 1]
+            self.LL_data.loc[loses[:, 0], 'LL_Loses'] = self.LL_data.loc[loses[:, 0], 'LL_Loses'] + loses[:, 1]
+            self.LL_data.loc[draws[:, 0], 'LL_Draws'] = self.LL_data.loc[draws[:, 0], 'LL_Draws'] + draws[:, 1]
 
     def _update_LL_Accu(self, matches_played):
         '''

@@ -63,9 +63,9 @@ a) __public__
       '''
   ```
 
-    Used every time that you want to incrementally update the _storage attributes_.
+Used every time that you want to incrementally update the _storage attributes_.
 
-    2)
+2)
 
   ```python
   def update_features(self):

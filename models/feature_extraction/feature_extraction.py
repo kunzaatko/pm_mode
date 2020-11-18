@@ -173,6 +173,7 @@ class Data:
                 # Making a list from the 'LID's
                 new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
                 self.LL_data = pd.concat((self.LL_data, new_teams))
+                self.LL_data.fillna(0., inplace=True)
 
             ##############
             #  NEW LIDS  #
@@ -233,8 +234,6 @@ class Data:
 
         Populate all the features from the frame `self.LL_data`
         '''
-        if self.yesterday is None:
-            self.LL_data.fillna(0., inplace=True)
         # This is needed because some characteristics as score and who won is not present in matches_played at self.today
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
@@ -325,10 +324,22 @@ class Data:
     # TODO: Could be unified with `_update_LL_Goals` as `_update_Goals` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Goals(self, matches_played):
         '''
-        Update 'SL_Wins', 'SL_Draws' and 'SL_Loses' of the frame `self.SL_data`
+        Update 'SL_Goals_Scored' and 'SL_Goals_Conceded' of the frame `self.SL_data`
         '''
-        pass
-    # }}}
+        if matches_played is not None:
+            seasons = [season[1] for season in matches_played.groupby('Sea')]
+            for season in seasons:
+
+                teams_goals_scored = np.concatenate([season[['HID', 'HSC']].to_numpy(dtype='int64'),
+                                                     season[['AID', 'ASC']].to_numpy(dtype='int64')])
+                teams_goals_conceded = np.concatenate([season[['HID', 'ASC']].to_numpy(dtype='int64'),
+                                                       season[['AID', 'HSC']].to_numpy(dtype='int64')])
+                teams = np.unique(teams_goals_scored[:, 0])
+
+                scored = fast(teams_goals_scored, teams)
+                conceded = fast(teams_goals_conceded, teams)
+                
+
 
     # TODO: Could be unified with `_update_LL_Res` as `_update_Res` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Res(self, matches_played):

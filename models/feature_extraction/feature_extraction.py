@@ -265,10 +265,9 @@ class Data:
                                                  matches_played[['AID', 'ASC']].to_numpy(dtype='int64')])
             teams_goals_conceded = np.concatenate([matches_played[['HID', 'ASC']].to_numpy(dtype='int64'),
                                                    matches_played[['AID', 'HSC']].to_numpy(dtype='int64')])
-            teams = np.unique(teams_goals_scored[:, 0])
 
-            scored = fast(teams_goals_scored, teams)
-            conceded = fast(teams_goals_conceded, teams)
+            scored = fast(teams_goals_scored)
+            conceded = fast(teams_goals_conceded)
             self.LL_data.loc[scored[:, 0], 'LL_Goals_Scored'] = \
                 self.LL_data.loc[scored[:, 0], 'LL_Goals_Scored'] + scored[:, 1]
             self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] = \
@@ -285,11 +284,10 @@ class Data:
                                                    matches_played[['AID', 'H']].to_numpy(dtype='int64')])
             teams_draws = np.concatenate([matches_played[['HID', 'D']].to_numpy(dtype='int64'),
                                                    matches_played[['AID', 'D']].to_numpy(dtype='int64')])
-            teams = np.unique(teams_wins[:, 0])
 
-            wins = fast(teams_wins, teams)
-            loses = fast(teams_loses, teams)
-            draws = fast(teams_draws, teams)
+            wins = fast(teams_wins)
+            loses = fast(teams_loses)
+            draws = fast(teams_draws)
 
             self.LL_data.loc[wins[:, 0], 'LL_Wins'] = self.LL_data.loc[wins[:, 0], 'LL_Wins'] + wins[:, 1]
             self.LL_data.loc[loses[:, 0], 'LL_Loses'] = self.LL_data.loc[loses[:, 0], 'LL_Loses'] + loses[:, 1]
@@ -303,21 +301,18 @@ class Data:
             pass
 
     def _UPDATE_SL_data_features(self):
-    # {{{
         '''
         Populate all the features of `self.SL_data`
         '''
         # TODO: should be done incrementaly <17-11-20, kunzaatko> #
-
-        if self.yesterday is None:
-            self.LL_data.fillna(0., inplace=True)
+        # TODO I assume that 'self.SL_data' are updated when new team will be present in 'inc' (Many98)
         # This is needed because some characteristics as score and who won is not present in matches_played at self.today
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
             else None
 
-        self._update_SL_Goals(matches_played_before)
-        self._update_SL_Res(matches_played_before)
+        #self._update_SL_Goals(matches_played_before)
+        #self._update_SL_Res(matches_played_before)
         self._update_SL_Played(matches_played_before)
         self._update_SL_Accu(matches_played_before)
 
@@ -327,27 +322,64 @@ class Data:
         Update 'SL_Goals_Scored' and 'SL_Goals_Conceded' of the frame `self.SL_data`
         '''
         if matches_played is not None:
-            seasons = [season[1] for season in matches_played.groupby('Sea')]
-            for season in seasons:
-
+            seasons = [season for season in matches_played.groupby('Sea')]
+            for sea, season in seasons:
                 teams_goals_scored = np.concatenate([season[['HID', 'HSC']].to_numpy(dtype='int64'),
                                                      season[['AID', 'ASC']].to_numpy(dtype='int64')])
                 teams_goals_conceded = np.concatenate([season[['HID', 'ASC']].to_numpy(dtype='int64'),
                                                        season[['AID', 'HSC']].to_numpy(dtype='int64')])
-                teams = np.unique(teams_goals_scored[:, 0])
 
-                scored = fast(teams_goals_scored, teams)
-                conceded = fast(teams_goals_conceded, teams)
-                
+                scored = fast(teams_goals_scored)
+                conceded = fast(teams_goals_conceded)
+
+                ind_gs = [(sea, team_id) for team_id in scored[:, 0]]
+                ind_gc = [(sea, team_id) for team_id in conceded[:, 0]]
+
+                self.SL_data.loc[ind_gs, 'SL_Goals_Scored'] = \
+                    self.SL_data.loc[ind_gs, 'SL_Goals_Scored'] + scored[:, 1]
+                self.SL_data.loc[ind_gc, 'SL_Goals_Conceded'] = \
+                    self.SL_data.loc[ind_gc, 'SL_Goals_Conceded'] + conceded[:, 1]
+
 
 
     # TODO: Could be unified with `_update_LL_Res` as `_update_Res` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Res(self, matches_played):
-        pass
+        if matches_played is not None:
+            seasons = [season for season in matches_played.groupby('Sea')]
+            for sea, season in seasons:
+                teams_wins = np.concatenate([matches_played[['HID', 'H']].to_numpy(dtype='int64'),
+                                             matches_played[['AID', 'A']].to_numpy(dtype='int64')])
+                teams_loses = np.concatenate([matches_played[['HID', 'A']].to_numpy(dtype='int64'),
+                                              matches_played[['AID', 'H']].to_numpy(dtype='int64')])
+                teams_draws = np.concatenate([matches_played[['HID', 'D']].to_numpy(dtype='int64'),
+                                              matches_played[['AID', 'D']].to_numpy(dtype='int64')])
+
+                wins = fast(teams_wins)
+                loses = fast(teams_loses)
+                draws = fast(teams_draws)
+
+                ind_wins = [(sea, team_id) for team_id in wins[:, 0]]
+                ind_loses = [(sea, team_id) for team_id in loses[:, 0]]
+                ind_draws = [(sea, team_id) for team_id in draws[:, 0]]
+
+                self.SL_data.loc[ind_wins, 'SL_Wins'] = \
+                    self.SL_data.loc[ind_wins, 'SL_Wins'] + wins[:, 1]
+                self.SL_data.loc[ind_loses, 'SL_Loses'] = \
+                    self.SL_data.loc[ind_loses, 'SL_Loses'] + loses[:, 1]
+                self.SL_data.loc[ind_draws, 'SL_Draws'] = \
+                    self.SL_data.loc[ind_draws, 'SL_Draws'] + draws[:, 1]
 
     # TODO: Could be unified with `_update_LL_Played` as `_update_Played` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Played(self, matches_played):
-        pass
+        if matches_played is not None:
+            seasons = [season for season in matches_played.groupby('Sea')]
+            for sea, season in seasons:
+                teams_played = np.unique(np.concatenate((season['HID'].to_numpy(dtype='int64'),
+                                                         season['AID'].to_numpy(dtype='int64'))), return_counts=True)
+                ind_teams = [(sea, team_id) for team_id in teams_played[0]]
+
+                self.SL_data.loc[ind_teams, 'SL_Played'] = self.SL_data.loc[ind_teams, 'SL_Played'] + \
+                                                                 teams_played[1]
 
     # TODO: Could be unified with `_update_LL_Accu` as `_update_Accu` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Accu(self, matches_played):
@@ -447,13 +479,16 @@ class Data:
 
 
 @njit
-def fast(pairs, teams):
+def fast(pairs):
     """
-    ...
-    :param pairs:
-    :param teams:
+    Calculates sum of vals for specific team present in first column of param pairs
+    :param pairs: np.ndarray:
+        every row contains team index and in second column of row is value e.g.
+        [[Team_ID, num_of_scored_goals] X (num_of_played_games * 2)]:
+        this can represent pairs of team:num_of_scored_goals: [[5, 2], [8, 3], [3, 4], [10, 4], [10, 3], [3, 8]]
     :return:
     """
+    teams = np.unique(pairs[:, 0])
     out = np.zeros((teams.size, 2))
     for i, team in enumerate(teams):
         num = pairs[pairs[:, 0] == team][:, 1].sum()

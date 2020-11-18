@@ -49,6 +49,9 @@ class Model:
 
         self.data.update_data(opps=opps,summary=summary, inc=inc)
 
+        # all features must be updated before model training
+        self.data.update_features()
+
         log_model = self.model.run_iter(inc, opps)
 
         self.data.update_data(P_dis=self.model.P_dis)

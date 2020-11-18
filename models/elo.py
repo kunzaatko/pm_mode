@@ -12,7 +12,7 @@ class Model_elo:
         data(class): class for agregating and manipulating data for the problem.
         '''
         self.Data = data
-        self.teams = self.Data.team_index
+        self.teams = self.Data.LL_data
         self.teams['ELO'] = np.NaN # založení column 'ELO'
         self.mean_elo = mean_elo
         self.k_factor = k_factor
@@ -65,9 +65,9 @@ class Model_elo:
         pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
         '''
         # Adding new teams
-        for ID in self.Data.team_index.index:
+        for ID in self.Data.LL_data.index:
             if ID not in self.teams.index:
-                self.teams.loc[ID] = self.Data.team_index.loc[ID]
+                self.teams.loc[ID] = self.Data.LL_data.loc[ID]
         self.teams.at[[math.isnan(d) for d in self.teams['ELO'].values],'ELO'] = self.mean_elo # define elo as mean elo for new teams
 
         self.eval_update_ELOs(inc)

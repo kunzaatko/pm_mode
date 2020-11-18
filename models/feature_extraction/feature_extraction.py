@@ -311,8 +311,8 @@ class Data:
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
             else None
 
-        #self._update_SL_Goals(matches_played_before)
-        #self._update_SL_Res(matches_played_before)
+        self._update_SL_Goals(matches_played_before)
+        self._update_SL_Res(matches_played_before)
         self._update_SL_Played(matches_played_before)
         self._update_SL_Accu(matches_played_before)
 
@@ -476,6 +476,51 @@ class Data:
             float: rate of win, when home
         '''
         pass
+
+    def goals_ratio(self, ID, oppo_ID, matches = 1, vs = False):
+        '''
+        Returns (goals_scored/(goals_scored  + goals_conceded)) of first team or this vs statistics
+        Parametrs:
+            oppo_ID(int): ID of the opponent.
+            ID(int): team id
+            matches(int): numbers of matches to past
+            vs(bool): set against each other
+        Returns:
+            float or 2 floats
+        '''
+
+        matches_period =self.matches[self.matches["HID"]==ID].append(self.matches[self.matches["AID"]==ID]).sort_index().tail(matches)
+        if vs:
+            matches_period =matches_period[matches_period["HID"]==oppo_ID].append(matches_period[matches_period["AID"]==oppo_ID]).sort_index().tail(matches)
+
+
+        goals_conceded = matches_period[matches_period["HID"]==ID]['ASC'].sum()+matches_period[matches_period["AID"]==ID]['HSC'].sum()
+        goals_scored = matches_period[matches_period["HID"]==ID]['HSC'].sum()+matches_period[matches_period["AID"]==ID]['ASC'].sum()
+        goals_ID =goals_scored/(goals_scored + goals_conceded)
+        if vs:
+            return (goals_ID, (1-goals_ID))
+        else:
+            return goals_ID
+
+    def wins(self, ID, months = None, matches=None):
+        '''
+        Returns wins in time or match period
+        Parameters:
+            ID(int): team id
+            months(int) = numbers of months
+            matches(int) = numbers of matches to past
+        Returns:
+            int
+        '''
+        if months != None:
+            months_period =self.matches[self.matches['Date'].isin(pd.date_range(end=self.today, periods=(months*30), freq='D')[::-1])]
+            wins = self.matches[self.matches["HID"]==ID]["H"].sum() + self.matches[self.matches["AID"]==ID]["A"].sum()
+            return wins
+
+        else:
+            matches_period =self.matches[self.matches["HID"]==ID].append(self.matches[self.matches["AID"]==ID]).sort_index().tail(matches)
+            wins = matches_period[matches_period["HID"]==ID]['H'].sum()+matches_period[matches_period["AID"]==ID]['A'].sum()
+            return wins
 
 
 @njit

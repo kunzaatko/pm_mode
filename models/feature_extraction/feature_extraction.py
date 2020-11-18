@@ -11,6 +11,7 @@ class Data:
         self.bankroll (int): bankroll from the summary
     '''
 
+    # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
     def __init__(self, sort_columns=True):
         '''
@@ -214,12 +215,14 @@ class Data:
         #####################################################################
 
     def update_features(self):
+    # {{{
         '''
         Update the features for the data stored in `self`.
         '''
         self._UPDATE_LL_data_features()
         self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
+    # }}}
 
         self.yesterday = self.today # test me to not overwrite
 
@@ -303,6 +306,7 @@ class Data:
             pass
 
     def _UPDATE_SL_data_features(self):
+    # {{{
         '''
         Populate all the features of `self.SL_data`
         '''
@@ -326,6 +330,7 @@ class Data:
         Update 'SL_Wins', 'SL_Draws' and 'SL_Loses' of the frame `self.SL_data`
         '''
         pass
+    # }}}
 
     # TODO: Could be unified with `_update_LL_Res` as `_update_Res` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Res(self, matches_played):
@@ -341,25 +346,48 @@ class Data:
         Update 'SL_Accu' of the frame `self.LL_data`
         '''
         pass
+    # }}}
 
     def _UPDATE_match_data_features(self):
+    # {{{
         '''
         Populate all the features of `self.match_data`
         '''
-        if self.today in self.matches['Date']:
+        if self.today in self.matches['Date'].values:
             # a dataframe of all the todays matches (matches that where played on `self.today`)
             matches_played_today = self.matches.groupby('Date').get_group(self.today)
-        else:
-            matches_played_today = None
-        # TODO: should be done incrementaly <17-11-20, kunzaatko> #
-        self._update_add_matches(matches_played_today)
-        pass
+            self._update_add_matches(matches_played_today)
 
+        # TODO: should be done incrementaly <17-11-20, kunzaatko> #
+    # }}}
+
+    # FIXME: does not update the matches that are not gone through at today... The matches in the first inc. <18-11-20, kunzaatko> #
     def _update_add_matches(self, matches_played_today):
+    # {{{
         '''
         Add the matches that were played today. The fields 'MatchID', 'Date' == self.today, 'Oppo' == HID/AID, 'Home' & 'Away' (int 1/0), 'M_Goals_Scored' & 'M_Goals_Conceded' (int), 'M_Win' & 'M_Draw' & 'M_Lose' (int 1/0), 'M_P(Win)' & 'M_P(Draw)' & 'M_P(Lose)' (float), 'M_Accu' should be filled.
         '''
-        pass
+        # the matches that played as home
+        matches_home = matches_played_today.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
+        renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'P(Win)', 'P(D)':'P(Draw)', 'P(A)':'P(Lose)'}
+        matches_home.rename(renames, axis=1, inplace=True)
+        matches_home['Home'] = 1
+        matches_home['Away'] = 0
+        matches_home['MatchID'] = matches_played_today.index
+        # TODO: Model accuracy <17-11-20, kunzaatko> #
+
+        # the matches that played as away
+        matches_away = matches_played_today.set_index('AID').drop(labels=['Open','opps_Date'],axis=1)
+        renames = {'HID':'Oppo', 'ASC':'M_Goals_Scored', 'HSC':'M_Goals_Conceded', 'A':'M_Win', 'D':'M_Draw', 'H':'M_Lose', 'P(A)':'P(Win)', 'P(D)':'P(Draw)', 'P(H)':'P(Lose)'}
+        matches_away.rename(renames, axis=1, inplace=True)
+        matches_away['Home'] = 0
+        matches_away['Away'] = 1
+        matches_away['MatchID'] = matches_played_today.index
+        # TODO: Model accuracy <17-11-20, kunzaatko> #
+
+        # TODO: Do not create a new object but only concat. <17-11-20, kunzaatko> #
+        self.match_data = self.match_data.append([matches_away, matches_home])
+    # }}}
 
 
     # ┌─────────────────────┐
@@ -392,7 +420,7 @@ class Data:
             number_of_matches(int): num
 
         Returns:
-            float: scored goals /
+            float: scored goals / # matches
         '''
         pass
 

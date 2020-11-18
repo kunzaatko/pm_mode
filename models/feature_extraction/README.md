@@ -22,9 +22,9 @@ There are two types of public attributes:
 
     LL: life-long
 
- | __index__   | `'LID'`          | `'LL_Goals_Scored'` | `'LL_Goals_Conceded'` | `'LL_Wins'` | `'LL_Draws'` | `'LL_Loses'` | `'LL_Played'`  | `'LL_Accu'`    |
- | :-      | :-:              | :-:                 | :-:                   | :-:         | :-:          | :-:          | :-:            | :-:            |
- | team ID | league ID (list) | goals scored        | goals conceded        | wins        | draws        | loses        | played matches | model accuracy |
+ | __index__ | `'LID'`          | `'LL_Goals_Scored'` | `'LL_Goals_Conceded'` | `'LL_Wins'` | `'LL_Draws'` | `'LL_Loses'` | `'LL_Played'`  | `'LL_Accu'`    |
+ | :-        | :-:              | :-:                 | :-:                   | :-:         | :-:          | :-:          | :-:            | :-:            |
+ | team ID   | league ID (list) | goals scored        | goals conceded        | wins        | draws        | loses        | played matches | model accuracy |
 
 
   - `self.SL_data` (`pandas.DataFrame`) [__feature attribute__]
@@ -63,9 +63,9 @@ a) __public__
       '''
   ```
 
-    Used every time that you want to incrementally update the _storage attributes_.
+Used every time that you want to incrementally update the _storage attributes_.
 
-    2)
+2)
 
   ```python
   def update_features(self):

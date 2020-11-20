@@ -557,7 +557,7 @@ class Data:
         if time_period_type in ['W', 'M', 'Y', 'S']:
             goals_scored = 0
             goals_conceded = 0
-            if time_period_num in ['W', 'M', 'Y']:
+            if time_period_type in ['W', 'M', 'Y']:
                 matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
                                                        (self.matches["AID"] == team_id)].sort_index()
                 if time_period_type == 'W':
@@ -645,7 +645,7 @@ class Data:
         if time_period_type in ['W', 'M', 'Y', 'S']:
             goals_scored = 0
             goals_conceded = 0
-            if time_period_num in ['W', 'M', 'Y']:
+            if time_period_type in ['W', 'M', 'Y']:
                 matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
                                                        (self.matches["AID"] == team_id)].sort_index()
                 if time_period_type == 'W':

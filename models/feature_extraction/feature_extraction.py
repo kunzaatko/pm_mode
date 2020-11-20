@@ -47,7 +47,8 @@ class Data:
         #           | 'P(H)'               | 'P(D)'           | 'P(A)'               | 'BetH'       | 'BetD'   | 'BetA'
         #           | model prob. home win | model prob. draw | model prob. away win | bet home win | bet draw | bet away win
 
-        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']) # All matches played by IDs ﭾ
+        types = {'Date':'datetime64[ns]', 'Open':'datetime64[ns]', 'Sea':'int16','HID':'int16','AID':'int16','OddsH':'float64','OddsD':'float64','OddsA':'float64','HSC':'int16','ASC':'int16','H':'int64','D':'int64','A':'int64','P(H)':'float64','P(D)':'float64','P(A)':'float64','BetH':'float64','BetD':'float64','BetA':'float64'}
+        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']).astype(types, copy=False) # All matches played by IDs ﭾ
 
 
         #########################
@@ -99,6 +100,8 @@ class Data:
             self._EVAL_summary(summary)
 
         if inc is not None:
+            if self.today in inc['Date'].values:
+                print(all(pd.isna(inc.groupby('Date').get_group(self.today))))
             inc = inc.loc[:,~inc.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
             self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
             self._EVAL_inc(inc)
@@ -124,29 +127,30 @@ class Data:
     def _EVAL_summary(self, summary):
         # {{{
         self.today = summary['Date'][0]
+        self.yesterday = self.today - pd.DateOffset(1) # -> We do not have to worry about self.yesterday being None anymore
         self.bankroll = summary['Bankroll'][0]
         # }}}
 
     def _EVAL_inc(self, inc):
         # {{{
         self._eval_teams(inc, self._curr_inc_teams)
-        self._eval_matches(inc)
+        self._eval_matches(inc,update_columns=['HSC','ASC','H','D','A'])
         # }}}
 
     def _EVAL_opps(self, opps):
         # {{{
         self._eval_teams(opps, self._curr_inc_teams)
-        self._eval_matches(opps)
+        self._eval_matches(opps, update_columns=['Sea','Date','LID','HID','AID','Open','OddsH','OddsA','OddsD'])
         # }}}
 
     def _EVAL_P_dis(self, P_dis):
         # {{{
-        self._eval_matches(P_dis)
+        self._eval_matches(P_dis,update_columns=['P(H)', 'P(D)', 'P(A)'])
         # }}}
 
     def _EVAL_bets(self, bets):
         # {{{
-        self._eval_matches(bets)
+        self._eval_matches(bets,update_columns=['BetH','BetD','BetA'])
         # }}}
 
     def _eval_teams(self, data_frame, data_frame_teams):
@@ -206,9 +210,16 @@ class Data:
 
     # TODO: Probably does not work correctly for the bets. The bets should not be combined for the `opps` and the `inc` but only for the `bets` dataframe. <17-11-20, kunzaatko> #
     # TODO: the 'opps_Date' is not working. The indexes should not be concatenated but appended for new matches if they do not have the same 'opps_Date'... (When they are not added on the same day) <17-11-20, kunzaatko> # -> the problem with this is though that we would have to groupby matchid to to access a match, and multiple MatchIDs would be the same in the dataframe -> We should consider adding a new frame with this data (or maybe the bets should be recorded as an associated series of the match... What is your oppinion/solution?
-    def _eval_matches(self, data_frame):
+    def _eval_matches(self, data_frame,update_columns=[]):
         # {{{
-        self.matches = self.matches.combine_first(data_frame)
+        # !!! this changes the dtypes and therefore runs slowly (as per https://github.com/pandas-dev/pandas/issues/28613)
+        # self.matches = self.matches.combine_first(data_frame)
+
+        old_matches = np.intersect1d(data_frame.index.to_numpy(dtype='int32'),self.matches.index.to_numpy(dtype='int32'))
+        self.matches.update(data_frame[update_columns].loc[old_matches])
+        new_matches = np.setdiff1d(data_frame.index.to_numpy(dtype='int32'),old_matches)
+        # if there are no such indices, then append whole frame
+        self.matches = self.matches.append(data_frame.loc[new_matches])
         # }}}
 
         #####################################################################
@@ -225,9 +236,8 @@ class Data:
         self._UPDATE_match_data_features()
     # }}}
 
-        self.yesterday = self.today # test me to not overwrite
-
     def _UPDATE_LL_data_features(self):
+    # {{{
         '''
         TODO LL features are not cummulative, in very first iteration it is suddenly updated but it needs to be updated \
              already after very first match e.g. Match_ID=1 and this info used for training of model
@@ -243,8 +253,10 @@ class Data:
         self._update_LL_Goals(matches_played_before)
         self._update_LL_Res(matches_played_before)
         self._update_LL_Accu(matches_played_before)
+    # }}}
 
     def _update_LL_Played(self, matches_played):
+    # {{{
         '''
         Update 'LL_Played' (games) of the fram self.LL_data
         :param matches_played: pd.Dataframe:
@@ -255,8 +267,10 @@ class Data:
                                                      matches_played['AID'].to_numpy(dtype='int64'))), return_counts=True)
             self.LL_data.loc[teams_played[0], 'LL_Played'] = self.LL_data.loc[teams_played[0], 'LL_Played'] + \
                                                              teams_played[1]
+    # }}}
 
     def _update_LL_Goals(self, matches_played):
+    # {{{
         '''
         Update 'LL_Goals_Scored' and 'LL_Goals_Conceded' of the frame `self.LL_data`
         '''
@@ -272,8 +286,10 @@ class Data:
                 self.LL_data.loc[scored[:, 0], 'LL_Goals_Scored'] + scored[:, 1]
             self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] = \
                 self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] + conceded[:, 1]
+    # }}}
 
     def _update_LL_Res(self, matches_played):
+    # {{{
         '''
         Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.LL_data`
         '''
@@ -292,15 +308,19 @@ class Data:
             self.LL_data.loc[wins[:, 0], 'LL_Wins'] = self.LL_data.loc[wins[:, 0], 'LL_Wins'] + wins[:, 1]
             self.LL_data.loc[loses[:, 0], 'LL_Loses'] = self.LL_data.loc[loses[:, 0], 'LL_Loses'] + loses[:, 1]
             self.LL_data.loc[draws[:, 0], 'LL_Draws'] = self.LL_data.loc[draws[:, 0], 'LL_Draws'] + draws[:, 1]
+    # }}}
 
     def _update_LL_Accu(self, matches_played):
+    # {{{
         '''
         Update 'LL_Accu' of the frame `self.LL_data`
         '''
         if matches_played is not None:
             pass
+    # }}}
 
     def _UPDATE_SL_data_features(self):
+    # {{{
         '''
         Populate all the features of `self.SL_data`
         '''
@@ -315,9 +335,11 @@ class Data:
         self._update_SL_Res(matches_played_before)
         self._update_SL_Played(matches_played_before)
         self._update_SL_Accu(matches_played_before)
+    # }}}
 
     # TODO: Could be unified with `_update_LL_Goals` as `_update_Goals` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Goals(self, matches_played):
+    # {{{
         '''
         Update 'SL_Goals_Scored' and 'SL_Goals_Conceded' of the frame `self.SL_data`
         '''
@@ -339,13 +361,14 @@ class Data:
                     self.SL_data.loc[ind_gs, 'SL_Goals_Scored'] + scored[:, 1]
                 self.SL_data.loc[ind_gc, 'SL_Goals_Conceded'] = \
                     self.SL_data.loc[ind_gc, 'SL_Goals_Conceded'] + conceded[:, 1]
-
-
+    # }}}
 
     # TODO: Could be unified with `_update_LL_Res` as `_update_Res` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Res(self, matches_played):
+    # {{{
         if matches_played is not None:
             seasons = [season for season in matches_played.groupby('Sea')]
+            # FIXME: Season is unused <20-11-20, kunzaatko> #
             for sea, season in seasons:
                 teams_wins = np.concatenate([matches_played[['HID', 'H']].to_numpy(dtype='int64'),
                                              matches_played[['AID', 'A']].to_numpy(dtype='int64')])
@@ -368,9 +391,11 @@ class Data:
                     self.SL_data.loc[ind_loses, 'SL_Loses'] + loses[:, 1]
                 self.SL_data.loc[ind_draws, 'SL_Draws'] = \
                     self.SL_data.loc[ind_draws, 'SL_Draws'] + draws[:, 1]
+    # }}}
 
     # TODO: Could be unified with `_update_LL_Played` as `_update_Played` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Played(self, matches_played):
+    # {{{
         if matches_played is not None:
             seasons = [season for season in matches_played.groupby('Sea')]
             for sea, season in seasons:
@@ -380,9 +405,11 @@ class Data:
 
                 self.SL_data.loc[ind_teams, 'SL_Played'] = self.SL_data.loc[ind_teams, 'SL_Played'] + \
                                                                  teams_played[1]
+    # }}}
 
     # TODO: Could be unified with `_update_LL_Accu` as `_update_Accu` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Accu(self, matches_played):
+    # {{{
         '''
         Update 'SL_Accu' of the frame `self.LL_data`
         '''
@@ -394,36 +421,36 @@ class Data:
         '''
         Populate all the features of `self.match_data`
         '''
-        if self.today in self.matches['Date'].values:
+        if self.yesterday in self.matches['Date'].values:
             # a dataframe of all the todays matches (matches that where played on `self.today`)
-            matches_played_today = self.matches.groupby('Date').get_group(self.today)
-            self._update_add_matches(matches_played_today)
+            matches_played_yesterday = self.matches.groupby('Date').get_group(self.yesterday)
+            self._update_add_matches(matches_played_yesterday)
 
         # TODO: should be done incrementaly <17-11-20, kunzaatko> #
     # }}}
 
     # FIXME: does not update the matches that are not gone through at today... The matches in the first inc. <18-11-20, kunzaatko> #
-    def _update_add_matches(self, matches_played_today):
+    def _update_add_matches(self, matches_played_yesterday):
     # {{{
         '''
-        Add the matches that were played today. The fields 'MatchID', 'Date' == self.today, 'Oppo' == HID/AID, 'Home' & 'Away' (int 1/0), 'M_Goals_Scored' & 'M_Goals_Conceded' (int), 'M_Win' & 'M_Draw' & 'M_Lose' (int 1/0), 'M_P(Win)' & 'M_P(Draw)' & 'M_P(Lose)' (float), 'M_Accu' should be filled.
+        Add the matches that were played yesterday. The fields 'MatchID', 'Date' == self.yesterday, 'Oppo' == HID/AID, 'Home' & 'Away' (int 1/0), 'M_Goals_Scored' & 'M_Goals_Conceded' (int), 'M_Win' & 'M_Draw' & 'M_Lose' (int 1/0), 'M_P(Win)' & 'M_P(Draw)' & 'M_P(Lose)' (float), 'M_Accu' should be filled.
         '''
         # the matches that played as home
-        matches_home = matches_played_today.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
+        matches_home = matches_played_yesterday.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
         renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'P(Win)', 'P(D)':'P(Draw)', 'P(A)':'P(Lose)'}
         matches_home.rename(renames, axis=1, inplace=True)
         matches_home['Home'] = 1
         matches_home['Away'] = 0
-        matches_home['MatchID'] = matches_played_today.index
+        matches_home['MatchID'] = matches_played_yesterday.index
         # TODO: Model accuracy <17-11-20, kunzaatko> #
 
         # the matches that played as away
-        matches_away = matches_played_today.set_index('AID').drop(labels=['Open','opps_Date'],axis=1)
+        matches_away = matches_played_yesterday.set_index('AID').drop(labels=['Open','opps_Date'],axis=1)
         renames = {'HID':'Oppo', 'ASC':'M_Goals_Scored', 'HSC':'M_Goals_Conceded', 'A':'M_Win', 'D':'M_Draw', 'H':'M_Lose', 'P(A)':'P(Win)', 'P(D)':'P(Draw)', 'P(H)':'P(Lose)'}
         matches_away.rename(renames, axis=1, inplace=True)
         matches_away['Home'] = 0
         matches_away['Away'] = 1
-        matches_away['MatchID'] = matches_played_today.index
+        matches_away['MatchID'] = matches_played_yesterday.index
         # TODO: Model accuracy <17-11-20, kunzaatko> #
 
         # TODO: Do not create a new object but only concat. <17-11-20, kunzaatko> #
@@ -436,6 +463,7 @@ class Data:
     # └─────────────────────┘
 
     def matches_with(self, ID, oppo_ID):
+    # {{{
         '''
         Returns all the matches with a particular opponent.
 
@@ -447,12 +475,14 @@ class Data:
             pd.DataFrame
         '''
         pass
+    # }}}
 
     # ┌───────────────────────────┐
     # │ LIFE-LONG CHARACTERISTICS │
     # └───────────────────────────┘
 
     def total_scored_goals_to_match(self, ID, number_of_matches):
+    # {{{
         '''
         Total life-long score to match ratio.
 
@@ -464,8 +494,10 @@ class Data:
             float: scored goals / # matches
         '''
         pass
+    # }}}
 
     def home_win_r(self):
+    # {{{
         '''
         Win rate for win when home.
 
@@ -476,8 +508,10 @@ class Data:
             float: rate of win, when home
         '''
         pass
+    # }}}
 
     def goals_ratio(self, ID, oppo_ID, matches = 1, vs = False):
+    # {{{
         '''
         Returns (goals_scored/(goals_scored  + goals_conceded)) of first team or this vs statistics
         Parametrs:
@@ -488,7 +522,6 @@ class Data:
         Returns:
             float or 2 floats
         '''
-
         matches_period =self.matches[self.matches["HID"]==ID].append(self.matches[self.matches["AID"]==ID]).sort_index().tail(matches)
         if vs:
             matches_period =matches_period[matches_period["HID"]==oppo_ID].append(matches_period[matches_period["AID"]==oppo_ID]).sort_index().tail(matches)
@@ -501,8 +534,10 @@ class Data:
             return (goals_ID, (1-goals_ID))
         else:
             return goals_ID
+    # }}}
 
     def wins(self, ID, months = None, matches=None):
+    # {{{
         '''
         Returns wins in time or match period
         Parameters:
@@ -513,6 +548,7 @@ class Data:
             int
         '''
         if months != None:
+            # FIXME: variable `months_period` not used <18-11-20, kunzaatko> #
             months_period =self.matches[self.matches['Date'].isin(pd.date_range(end=self.today, periods=(months*30), freq='D')[::-1])]
             wins = self.matches[self.matches["HID"]==ID]["H"].sum() + self.matches[self.matches["AID"]==ID]["A"].sum()
             return wins
@@ -521,10 +557,58 @@ class Data:
             matches_period =self.matches[self.matches["HID"]==ID].append(self.matches[self.matches["AID"]==ID]).sort_index().tail(matches)
             wins = matches_period[matches_period["HID"]==ID]['H'].sum()+matches_period[matches_period["AID"]==ID]['A'].sum()
             return wins
+    # }}}
 
+    def home_advantage(self, ID, MatchID = None, rate=False):
+    # {{{
+        '''
+        Calculate the home advantage feature of the team. t.i. (# home_wins)/(# home_plays) - (#wins)/(#plays)
+        That is home_win_r - win_r. (The advantage of playing home against the total win rate).
+        '''
+        team_matches = self.match_data.loc[ID]
+        team_matches_home = team_matches[team_matches.Home == 1]
+        if not MatchID:
+            home_win_r = (team_matches_home['M_Win'] + team_matches_home['M_Draw'] * .5).sum()/len(team_matches_home)
+            win_r = (team_matches['M_Win'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+        else:
+            match_date = self.matches.loc[MatchID]['Date']
+            previous_home_matches = team_matches[(team_matches.Date < match_date) & (team_matches.Home == 1)]
+            previous_matches = team_matches[team_matches.Date < match_date]
+            home_win_r = (previous_home_matches['M_Win'] + previous_home_matches['M_Draw'] * .5).sum()/len(previous_home_matches)
+            win_r = (previous_matches['M_Win'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
+        if rate:
+            return home_win_r
+        else:
+            return home_win_r / win_r # test only away_lose_r
+    # }}}
+
+    def away_disadvantage(self, ID, MatchID = None, rate=False):
+    # {{{
+        '''
+        Calculate the away disadvantage feature of the team. t.i. (# away_loses)/(# away_plays) - (# loses)/(#plays)`
+        That is away_lose_r - lose_r. (The advantage of playing home against the total win rate).
+        '''
+        team_matches = self.match_data.loc[ID]
+        print(team_matches)
+        team_matches_away = team_matches[team_matches.Away == 1]
+        if not MatchID:
+            away_lose_r = (team_matches_away['M_Lose'] + team_matches_away['M_Draw'] * .5).sum()/len(team_matches_away)
+            lose_r = (team_matches['M_Lose'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+        else:
+            match_date = self.matches.loc[MatchID]['Date']
+            previous_away_matches = team_matches[(team_matches.Date < match_date) & (team_matches.Away == 1)]
+            previous_matches = team_matches[team_matches.Date < match_date]
+            away_lose_r = (previous_away_matches['M_Lose'] + previous_away_matches['M_Draw'] * .5).sum()/len(previous_away_matches)
+            lose_r = (previous_matches['M_Lose'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
+        if rate:
+            return away_lose_r
+        else:
+            return away_lose_r / lose_r # test only away_lose_r
+    # }}}
 
 @njit
 def fast(pairs):
+    # {{{
     """
     Calculates sum of vals for specific team present in first column of param pairs
     :param pairs: np.ndarray:
@@ -539,3 +623,4 @@ def fast(pairs):
         num = pairs[pairs[:, 0] == team][:, 1].sum()
         out[i, 0], out[i, 1] = team, num
     return out
+    # }}}

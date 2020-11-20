@@ -239,15 +239,13 @@ class Data:
     def _UPDATE_LL_data_features(self):
     # {{{
         '''
-        TODO LL features are not cummulative, in very first iteration it is suddenly updated but it needs to be updated \
-             already after very first match e.g. Match_ID=1 and this info used for training of model
-
         Populate all the features from the frame `self.LL_data`
         '''
-        # This is needed because some characteristics as score and who won is not present in matches_played at self.today
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
             else None
+        matches_played_today = self.matches.groupby('Date').get_group(self.today) if self.today in self.matches['Date'].to_numpy() \
+                else None
 
         self._update_LL_Played(matches_played_before)
         self._update_LL_Goals(matches_played_before)
@@ -326,7 +324,6 @@ class Data:
         '''
         # TODO: should be done incrementaly <17-11-20, kunzaatko> #
         # TODO I assume that 'self.SL_data' are updated when new team will be present in 'inc' (Many98)
-        # This is needed because some characteristics as score and who won is not present in matches_played at self.today
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
             else None
@@ -368,14 +365,13 @@ class Data:
     # {{{
         if matches_played is not None:
             seasons = [season for season in matches_played.groupby('Sea')]
-            # FIXME: Season is unused <20-11-20, kunzaatko> #
             for sea, season in seasons:
-                teams_wins = np.concatenate([matches_played[['HID', 'H']].to_numpy(dtype='int64'),
-                                             matches_played[['AID', 'A']].to_numpy(dtype='int64')])
-                teams_loses = np.concatenate([matches_played[['HID', 'A']].to_numpy(dtype='int64'),
-                                              matches_played[['AID', 'H']].to_numpy(dtype='int64')])
-                teams_draws = np.concatenate([matches_played[['HID', 'D']].to_numpy(dtype='int64'),
-                                              matches_played[['AID', 'D']].to_numpy(dtype='int64')])
+                teams_wins = np.concatenate([season[['HID', 'H']].to_numpy(dtype='int64'),
+                                             season[['AID', 'A']].to_numpy(dtype='int64')])
+                teams_loses = np.concatenate([season[['HID', 'A']].to_numpy(dtype='int64'),
+                                              season[['AID', 'H']].to_numpy(dtype='int64')])
+                teams_draws = np.concatenate([season[['HID', 'D']].to_numpy(dtype='int64'),
+                                              season[['AID', 'D']].to_numpy(dtype='int64')])
 
                 wins = fast(teams_wins)
                 loses = fast(teams_loses)
@@ -496,6 +492,87 @@ class Data:
         pass
     # }}}
 
+    # TODO features working with goals_scored/conceded for particluar team should be wrapped to one method
+    def goals_difference_to_num_matches(self, team_id, num_matches=1):
+        """
+        Calculates (GS-GC) of specific team from goals scored and conceded in particular number of matches played before.
+        This feature should somehow aggregate information about team attack and defensive strength.
+        :param team_id: int:
+            Specifies particular team
+        :param num_matches: int:
+            Specifies particular number of matches from which the goals characteristics should be included.
+            Default is set to 1.
+        :return: int:
+
+        """
+        if type(num_matches) is not int or num_matches == 0:
+            num_matches = 1
+        matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
+                                               (self.matches["AID"] == team_id)].sort_index().tail(num_matches)
+        '''matches_containing_team_ = pd.concat([self.matches[self.matches["HID"] == team_id],
+                                             self.matches[self.matches["AID"] == team_id]]).sort_index().tail(num_matches)'''
+
+        goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                         matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+        goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                       matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
+
+        return goals_scored - goals_conceded
+
+    def goals_difference_to_time_period(self, team_id, time_period_type='month', time_period_num=1):
+        """
+        Calculates (GS-GC) of specific team from goals scored and conceded in particular time period played before.
+        This feature should somehow aggregate information about team attack and defensive strength.
+        :param time_period_num: int:
+            Specifies particular time period from which the goals characteristics should be included.
+        :param time_period_type: str:
+            possible values are: 'last', 'week', 'month', 'year', 'season', 'life'
+        :param team_id: int:
+            Specifies particular team
+
+        :return: int:
+
+        """
+        matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
+                                               (self.matches["AID"] == team_id)].sort_index().tail(time_period_num)
+
+
+    def goals_ratio_to_num_matches(self, team_id, num_matches=1):
+        """
+        Calculates (GS/GC) of specific team from goals scored and conceded in particular number of matches played before.
+        This feature should somehow aggregate information about team attack and defensive strength.
+        :param team_id: int:
+            Specifies particular team
+        :param num_matches: int:
+            Specifies particular number of matches from which the goals characteristics should be included.
+        :return: int:
+        """
+        if type(num_matches) is not int or num_matches == 0:
+            num_matches = 1
+        matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
+                                               (self.matches["AID"] == team_id)].sort_index().tail(num_matches)
+        '''matches_containing_team_ = pd.concat([self.matches[self.matches["HID"] == team_id],
+                                             self.matches[self.matches["AID"] == team_id]]).sort_index().tail(num_matches)'''
+
+        goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                         matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+        goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                       matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
+
+        return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
+
+    def goals_ratio_to_time_period(self, team_id, time_period):
+        """
+        Calculates (GS/GC) of specific team from goals scored and conceded in particular time period played before.
+        This feature should somehow aggregate information about team attack and defensive strength.
+        :param team_id: int:
+            Specifies particular team
+        :param time_period: int:
+            Specifies particular time period from which the goals characteristics should be included.
+        :return: int:
+
+        """
+        pass
     def home_win_r(self):
     # {{{
         '''

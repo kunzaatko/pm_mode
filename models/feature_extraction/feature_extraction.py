@@ -507,10 +507,16 @@ class Data:
         """
         if type(num_matches) is not int or num_matches == 0:
             num_matches = 1
+
+        # this is fastest selecting in compared with concat and append
+        # %timeit matches[(matches["HID"] == team_id) | (matches["AID"] == team_id)].sort_index()
+        # 1.21 ms ± 14.7 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+        # %timeit pd.concat([matches[matches["HID"] == team_id], matches[matches["AID"] == team_id]]).sort_index()
+        # 3.26 ms ± 62.2 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+        # %timeit matches[matches["HID"]==team_id].append(matches[matches["AID"]==team_id]).sort_index()
+        # 3.31 ms ± 75.8 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
         matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
                                                (self.matches["AID"] == team_id)].sort_index().tail(num_matches)
-        '''matches_containing_team_ = pd.concat([self.matches[self.matches["HID"] == team_id],
-                                             self.matches[self.matches["AID"] == team_id]]).sort_index().tail(num_matches)'''
 
         goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
                          matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
@@ -519,22 +525,60 @@ class Data:
 
         return goals_scored - goals_conceded
 
-    def goals_difference_to_time_period(self, team_id, time_period_type='month', time_period_num=1):
+    def goals_difference_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
         """
         Calculates (GS-GC) of specific team from goals scored and conceded in particular time period played before.
         This feature should somehow aggregate information about team attack and defensive strength.
         :param time_period_num: int:
-            Specifies particular time period from which the goals characteristics should be included.
+            Specifies particular number of time period (specified in param 'time_period_type') from which the goals
+            characteristics should be included.
         :param time_period_type: str:
-            possible values are: 'last', 'week', 'month', 'year', 'season', 'life'
+            Possible values are: 'W' : week(fixed to 7 days)
+                                 'M' : month(fixed to 30 days)
+                                 'Y' : year(fixed to 365 days)
+                                 'S' : season(using self.SL_data)
+                                 'L' : life(using self.LL_data)
         :param team_id: int:
             Specifies particular team
-
         :return: int:
-
         """
-        matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
-                                               (self.matches["AID"] == team_id)].sort_index().tail(time_period_num)
+        if time_period_type not in ['W', 'M', 'Y', 'S', 'L']:
+            time_period_type = 'M'
+        if type(time_period_num) is not int or time_period_num == 0:
+            time_period_num = 1
+
+        if time_period_type in ['W', 'M', 'Y', 'S']:
+            goals_scored = 0
+            goals_conceded = 0
+            if time_period_num in ['W', 'M', 'Y']:
+                matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
+                                                       (self.matches["AID"] == team_id)].sort_index()
+                if time_period_type == 'W':
+                    time_period_num *= 7  # week fixed to 7 days
+                elif time_period_type == 'M':
+                    time_period_num *= 30  # month fixed to 30 days
+                elif time_period_type == 'Y':
+                    time_period_num *= 365  # year fixed to 365 days
+
+                how_deep_to_past = np.datetime64(self.today) - np.timedelta64(time_period_num, 'D')
+                matches_containing_team = matches_containing_team[(matches_containing_team['Date'] >= str(how_deep_to_past))
+                                                                  & (matches_containing_team['Date'] < self.today)]
+                goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                                 matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+                goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                               matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
+
+            elif time_period_type == 'S':
+                # It is assumed that team is already added in DataFrame self.LL_data
+                matches_containing_team = self.SL_data.xs(team_id, level='second').tail(time_period_num)
+
+                goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum()
+                goals_scored = matches_containing_team['SL_Goals_Scored'].sum()
+
+            return goals_scored - goals_conceded
+        elif time_period_type == 'L':
+            # It is assumed that team is already added in DataFrame self.LL_data
+            return self.LL_data.loc[team_id, 'LL_Goals_Scored'] - self.LL_data.loc[team_id, 'LL_Goals_Conceded']
 
 
     def goals_ratio_to_num_matches(self, team_id, num_matches=1):
@@ -549,10 +593,15 @@ class Data:
         """
         if type(num_matches) is not int or num_matches == 0:
             num_matches = 1
+        # this is fastest selecting to compared with concat and append
+        # %timeit matches[(matches["HID"] == team_id) | (matches["AID"] == team_id)].sort_index()
+        # 1.21 ms ± 14.7 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+        # %timeit pd.concat([matches[matches["HID"] == team_id], matches[matches["AID"] == team_id]]).sort_index()
+        # 3.26 ms ± 62.2 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+        # %timeit matches[matches["HID"]==team_id].append(matches[matches["AID"]==team_id]).sort_index()
+        # 3.31 ms ± 75.8 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
         matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
                                                (self.matches["AID"] == team_id)].sort_index().tail(num_matches)
-        '''matches_containing_team_ = pd.concat([self.matches[self.matches["HID"] == team_id],
-                                             self.matches[self.matches["AID"] == team_id]]).sort_index().tail(num_matches)'''
 
         goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
                          matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
@@ -561,18 +610,63 @@ class Data:
 
         return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
 
-    def goals_ratio_to_time_period(self, team_id, time_period):
+    def goals_ratio_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
         """
         Calculates (GS/GC) of specific team from goals scored and conceded in particular time period played before.
         This feature should somehow aggregate information about team attack and defensive strength.
+        :param time_period_num: int:
+            Specifies particular number of time period (specified in param 'time_period_type') from which the goals
+            characteristics should be included.
+        :param time_period_type: str:
+            Possible values are: 'W' : week(fixed to 7 days)
+                                 'M' : month(fixed to 30 days)
+                                 'Y' : year(fixed to 365 days)
+                                 'S' : season(using self.SL_data)
+                                 'L' : life(using self.LL_data)
         :param team_id: int:
             Specifies particular team
-        :param time_period: int:
-            Specifies particular time period from which the goals characteristics should be included.
         :return: int:
-
         """
-        pass
+        if time_period_type not in ['W', 'M', 'Y', 'S', 'L']:
+            time_period_type = 'M'
+        if type(time_period_num) is not int or time_period_num == 0:
+            time_period_num = 1
+
+        if time_period_type in ['W', 'M', 'Y', 'S']:
+            goals_scored = 0
+            goals_conceded = 0
+            if time_period_num in ['W', 'M', 'Y']:
+                matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
+                                                       (self.matches["AID"] == team_id)].sort_index()
+                if time_period_type == 'W':
+                    time_period_num *= 7  # week fixed to 7 days
+                elif time_period_type == 'M':
+                    time_period_num *= 30  # month fixed to 30 days
+                elif time_period_type == 'Y':
+                    time_period_num *= 365  # year fixed to 365 days
+
+                how_deep_to_past = np.datetime64(self.today) - np.timedelta64(time_period_num, 'D')
+                matches_containing_team = matches_containing_team[
+                    (matches_containing_team['Date'] >= str(how_deep_to_past))
+                    & (matches_containing_team['Date'] < self.today)]
+                goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                                 matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+                goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                               matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
+
+            elif time_period_type == 'S':
+                # It is assumed that team is already added in DataFrame self.LL_data
+                matches_containing_team = self.SL_data.xs(team_id, level='second').tail(time_period_num)
+
+                goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum()
+                goals_scored = matches_containing_team['SL_Goals_Scored'].sum()
+
+            return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
+        elif time_period_type == 'L':
+            # It is assumed that team is already added in DataFrame self.LL_data
+            gs, gc = self.LL_data.loc[team_id, 'LL_Goals_Scored'], self.LL_data.loc[team_id, 'LL_Goals_Conceded']
+
+            return gs / gc if gc != 0 else gs / (gc + 1)
     def home_win_r(self):
     # {{{
         '''
@@ -683,7 +777,10 @@ class Data:
             return away_lose_r / lose_r # test only away_lose_r
     # }}}
 
-@njit
+# plain numpy runs it faster about 4 ms, njit not jit did nor give better performance (tested on np.ndarray with shape (74664, 2))
+# plain numpy: 98.8 ms ± 189 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+# using numba njit ( AKA jit(nopython=True)): 102 ms ± 122 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+# using numba jit (AKA jit(nopython=False)): 102 ms ± 96.9 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
 def fast(pairs):
     # {{{
     """

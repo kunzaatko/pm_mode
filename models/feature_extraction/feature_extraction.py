@@ -14,6 +14,7 @@ class Data:
     # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
     def __init__(self, sort_columns=True):
+    # {{{
         '''
         Parameters:
             sort_columns(True): Sort the columns of the dataframes
@@ -78,7 +79,7 @@ class Data:
         #          | 'M_Win'   | 'M_Draw'  | 'M_Lose'   | 'M_P(Win)'      | 'M_P(Draw)'      | 'M_P(Lose)'      | 'M_Accu'
         #          | match win | match draw| match lose | model prob. win | model prob. draw | model prob. lose | model accuracy
         self.match_data = pd.DataFrame(columns=['MatchID', 'Date' , 'Oppo', 'Home', 'Away',  'M_Goals_Scored', 'M_Goals_Conceded', 'M_Win','M_Draw', 'M_Lose','M_P(Win)','M_P(Draw)', 'M_P(Lose)','M_Accu'])
-
+    # }}}
 
     ######################################
     #  UPDATING THE DATA STORED IN SELF  #
@@ -477,16 +478,18 @@ class Data:
     # │ LIFE-LONG CHARACTERISTICS │
     # └───────────────────────────┘
 
-    def total_scored_goals_to_match(self, ID, number_of_matches):
+    def total_goals_to_match(self, ID, number_of_matches, MatchID=None, goal_type='scored'):
     # {{{
         '''
-        Total life-long score to match ratio.
+        Total life-long goal to match ratio.
 
         Parameters:
             ID(int): team id
             number_of_matches(int): num
+            goal_type(str): 'scored'/'conceded'
 
         Returns:
+<<<<<<< Updated upstream
             float: scored goals / # matches
         '''
         pass
@@ -494,6 +497,7 @@ class Data:
 
     # TODO features working with goals_scored/conceded for particluar team should be wrapped to one method
     def goals_difference_to_num_matches(self, team_id, num_matches=1):
+    # {{{
         """
         Calculates (GS-GC) of specific team from goals scored and conceded in particular number of matches played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -524,8 +528,10 @@ class Data:
                        matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
         return goals_scored - goals_conceded
+    # }}}
 
     def goals_difference_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
+    # {{{
         """
         Calculates (GS-GC) of specific team from goals scored and conceded in particular time period played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -579,9 +585,10 @@ class Data:
         elif time_period_type == 'L':
             # It is assumed that team is already added in DataFrame self.LL_data
             return self.LL_data.loc[team_id, 'LL_Goals_Scored'] - self.LL_data.loc[team_id, 'LL_Goals_Conceded']
-
+    # }}}
 
     def goals_ratio_to_num_matches(self, team_id, num_matches=1):
+    # {{{
         """
         Calculates (GS/GC) of specific team from goals scored and conceded in particular number of matches played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -609,8 +616,10 @@ class Data:
                        matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
         return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
+    # }}}
 
     def goals_ratio_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
+    # {{{
         """
         Calculates (GS/GC) of specific team from goals scored and conceded in particular time period played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -667,18 +676,31 @@ class Data:
             gs, gc = self.LL_data.loc[team_id, 'LL_Goals_Scored'], self.LL_data.loc[team_id, 'LL_Goals_Conceded']
 
             return gs / gc if gc != 0 else gs / (gc + 1)
-    def home_win_r(self):
+    # }}}
+
+    def goals_to_match_ratio(self,ID, number_of_matches,MatchID=None, goal_type='scored'):
     # {{{
         '''
-        Win rate for win when home.
-
-        Parameters:
-            ID(int): team index
-
+        Parametrs:
+            ID(int): ID of the team.
+            number_of_matches(int): Number of matches to evaluate.
+            MatchID(int): MatchID for the feature
+            goal_type(str): 'scored'/'conceded'(None)
         Returns:
-            float: rate of win, when home
+            float: (scored / conceded) goals / # matches
         '''
-        pass
+        team_matches = self.match_data.loc[ID]
+        if not MatchID:
+            last_number_of_matches = team_matches.tail(number_of_matches)
+        if MatchID:
+            match_date = self.matches.loc[MatchID].Date
+            previous_matches = team_matches[team_matches.Date < match_date]
+            last_number_of_matches = previous_matches.tail(number_of_matches)
+
+        if goal_type == 'scored':
+            return last_number_of_matches.M_Goals_Scored.sum() / number_of_matches
+        else:
+            return last_number_of_matches.M_Goals_Conceded.sum() / number_of_matches
     # }}}
 
     def goals_ratio(self, ID, oppo_ID, matches = 1, vs = False):
@@ -707,7 +729,7 @@ class Data:
             return goals_ID
     # }}}
 
-    def wins(self, ID, months = None, matches=None):
+    def wins_ratio(self, ID, months = None, matches=None):
     # {{{
         '''
         Returns wins in time or match period
@@ -730,51 +752,83 @@ class Data:
             return wins
     # }}}
 
-    def home_advantage(self, ID, MatchID = None, rate=False):
+    def home_advantage(self, ID, MatchID = None, method=None):
     # {{{
         '''
         Calculate the home advantage feature of the team. t.i. (# home_wins)/(# home_plays) - (#wins)/(#plays)
         That is home_win_r - win_r. (The advantage of playing home against the total win rate).
+
+        Parameters:
+            MatchID(int/None): The `MatchID` to calculate the feature for. If `== None` than it counts all the matches that were recorded
+            method(str/None): (`'rate_surplus`/`'rate_ratio'`/None).
+                `'rate_surplus'` ->  `home_win_r - win_r`
+                `'rate_ratio'` -> `home_win_r / win_r`
+                `'None'` / `'rate'` -> `home_win_r`
+                `'all'` -> returns a tuple of (rate_surplus,rate_ratio,rate)
         '''
         team_matches = self.match_data.loc[ID]
         team_matches_home = team_matches[team_matches.Home == 1]
+        # if calculating with all the match IDs that are currently recorded
         if not MatchID:
             home_win_r = (team_matches_home['M_Win'] + team_matches_home['M_Draw'] * .5).sum()/len(team_matches_home)
-            win_r = (team_matches['M_Win'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+            if method in ['rate_surplus','rate_ratio','all']:
+                win_r = (team_matches['M_Win'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+        # calculate for some arbitrary MatchID with more matches being recorded than only the ones berfore the MatchID (for correlation purposes)
         else:
-            match_date = self.matches.loc[MatchID]['Date']
+            match_date = self.matches.loc[MatchID].Date
             previous_home_matches = team_matches[(team_matches.Date < match_date) & (team_matches.Home == 1)]
             previous_matches = team_matches[team_matches.Date < match_date]
             home_win_r = (previous_home_matches['M_Win'] + previous_home_matches['M_Draw'] * .5).sum()/len(previous_home_matches)
-            win_r = (previous_matches['M_Win'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
-        if rate:
-            return home_win_r
-        else:
+            if method in ['rate_surplus','rate_ratio','all']:
+                win_r = (previous_matches['M_Win'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
+        if method == 'rate_surplus':
+            return home_win_r - win_r
+        elif method == 'rate_ratio':
             return home_win_r / win_r # test only away_lose_r
+        elif method == 'all':
+            return (home_win_r - win_r, home_win_r/win_r,home_win_r)
+        else:
+            return home_win_r
     # }}}
 
-    def away_disadvantage(self, ID, MatchID = None, rate=False):
+    def away_disadvantage(self, ID, MatchID = None, method=None):
     # {{{
         '''
         Calculate the away disadvantage feature of the team. t.i. (# away_loses)/(# away_plays) - (# loses)/(#plays)`
         That is away_lose_r - lose_r. (The advantage of playing home against the total win rate).
+
+        Parameters:
+            MatchID(int/None): The `MatchID` to calculate the feature for. If `== None` than it counts all the matches that were recorded
+            method(str/None): (`'rate_surplus`/`'rate_ratio'`/None).
+                `'rate_surplus'` ->  `away_lose_r - lose_r`
+                `'rate_ratio'` -> `away_lose_r / lose_r`
+                `'None'` / `'rate'` -> `away_lose_r`
+                `'all'` -> returns a tuple of (rate_surplus,rate_ratio,rate)
         '''
         team_matches = self.match_data.loc[ID]
-        print(team_matches)
         team_matches_away = team_matches[team_matches.Away == 1]
+        # if calculating with all the match IDs that are currently recorded
         if not MatchID:
             away_lose_r = (team_matches_away['M_Lose'] + team_matches_away['M_Draw'] * .5).sum()/len(team_matches_away)
-            lose_r = (team_matches['M_Lose'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+            if method in ['rate_surplus','rate_ratio','all']:
+                lose_r = (team_matches['M_Lose'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+        # calculate for some arbitrary MatchID with more matches being recorded than only the ones berfore the MatchID (for correlation purposes)
         else:
             match_date = self.matches.loc[MatchID]['Date']
             previous_away_matches = team_matches[(team_matches.Date < match_date) & (team_matches.Away == 1)]
             previous_matches = team_matches[team_matches.Date < match_date]
             away_lose_r = (previous_away_matches['M_Lose'] + previous_away_matches['M_Draw'] * .5).sum()/len(previous_away_matches)
-            lose_r = (previous_matches['M_Lose'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
-        if rate:
-            return away_lose_r
-        else:
+            if method in ['rate_surplus','rate_ratio','all']:
+                lose_r = (previous_matches['M_Lose'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
+
+        if method == 'rate_surplus':
+            return away_lose_r - lose_r
+        elif method == 'rate_ratio':
             return away_lose_r / lose_r # test only away_lose_r
+        elif method == 'all':
+            return (away_lose_r - lose_r,  away_lose_r / lose_r, away_lose_r)
+        else:
+            return away_lose_r
     # }}}
 
 # plain numpy runs it faster about 4 ms, njit not jit did nor give better performance (tested on np.ndarray with shape (74664, 2))

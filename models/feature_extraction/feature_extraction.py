@@ -490,6 +490,7 @@ class Data:
 
         Returns:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             float: scored goals / # matches
         '''
         pass

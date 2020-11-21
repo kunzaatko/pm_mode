@@ -522,11 +522,12 @@ class Data:
         # 3.31 ms ± 75.8 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
         matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
                                                (self.matches["AID"] == team_id)].sort_index()[-num_matches-1:-1]
-
-        goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
-                         matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
-        goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
-                       matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
+        goals_conceded, goals_scored = np.nan, np.nan
+        if not matches_containing_team.empty:
+            goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                             matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+            goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                           matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
         return goals_scored - goals_conceded
     # }}}
@@ -570,17 +571,18 @@ class Data:
                 how_deep_to_past = np.datetime64(self.today) - np.timedelta64(time_period_num, 'D')
                 matches_containing_team = matches_containing_team[(matches_containing_team['Date'] >= str(how_deep_to_past))
                                                                   & (matches_containing_team['Date'] < self.yesterday)]
-                goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum(min_count=1) + \
-                                 matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum(min_count=1)
-                goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum(min_count=1) + \
-                               matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum(min_count=1)
+                if not matches_containing_team.empty:
+                    goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                                     matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+                    goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                                   matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
             elif time_period_type == 'S':
                 # It is assumed that team is already added in DataFrame self.LL_data
                 matches_containing_team = self.SL_data.xs(team_id, level='second')[-1-time_period_num:-1]
-
-                goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum(min_count=1)
-                goals_scored = matches_containing_team['SL_Goals_Scored'].sum(min_count=1)
+                if not matches_containing_team.empty:
+                    goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum()
+                    goals_scored = matches_containing_team['SL_Goals_Scored'].sum()
 
             return goals_scored - goals_conceded
         elif time_period_type == 'L':
@@ -611,10 +613,12 @@ class Data:
         matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
                                                (self.matches["AID"] == team_id)].sort_index()[-1-num_matches:-1]
 
-        goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum(min_count=1) + \
-                         matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum(min_count=1)
-        goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum(min_count=1) + \
-                       matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum(min_count=1)
+        goals_conceded, goals_scored = np.nan, np.nan
+        if not matches_containing_team.empty:
+            goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                             matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+            goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                           matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
         return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
     # }}}
@@ -659,17 +663,18 @@ class Data:
                 matches_containing_team = matches_containing_team[
                     (matches_containing_team['Date'] >= str(how_deep_to_past))
                     & (matches_containing_team['Date'] < self.yesterday)]
-                goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum(min_count=1) + \
-                                 matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum(min_count=1)
-                goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum(min_count=1) + \
-                               matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum(min_count=1)
+                if not matches_containing_team.empty:
+                    goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
+                                     matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
+                    goals_scored = matches_containing_team[matches_containing_team["HID"] == team_id]['HSC'].sum() + \
+                                   matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
             elif time_period_type == 'S':
                 # It is assumed that team is already added in DataFrame self.LL_data
                 matches_containing_team = self.SL_data.xs(team_id, level='second')[-1-time_period_num:-1]
-
-                goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum(min_count=1)
-                goals_scored = matches_containing_team['SL_Goals_Scored'].sum(min_count=1)
+                if not matches_containing_team.empty:
+                    goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum()
+                    goals_scored = matches_containing_team['SL_Goals_Scored'].sum()
 
             return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
         elif time_period_type == 'L':
@@ -719,12 +724,13 @@ class Data:
         matches_period =self.matches[(self.matches["HID"]==ID) | (self.matches["AID"]==ID)].sort_index()[-1-matches:-1]
         if vs:
             matches_period =matches_period[matches_period["HID"]==oppo_ID].append(matches_period[matches_period["AID"]==oppo_ID]).sort_index()[-1-matches:-1]
+        goals_conceded, goals_scored = np.nan, np.nan
 
-
-        goals_conceded = matches_period[matches_period["HID"]==ID]['ASC'].sum(min_count=1) + \
-                         matches_period[matches_period["AID"]==ID]['HSC'].sum(min_count=1)
-        goals_scored = matches_period[matches_period["HID"]==ID]['HSC'].sum(min_count=1) + \
-                       matches_period[matches_period["AID"]==ID]['ASC'].sum(min_count=1)
+        if not matches_period.empty:
+            goals_conceded = matches_period[matches_period["HID"]==ID]['ASC'].sum() + \
+                             matches_period[matches_period["AID"]==ID]['HSC'].sum()
+            goals_scored = matches_period[matches_period["HID"]==ID]['HSC'].sum() + \
+                           matches_period[matches_period["AID"]==ID]['ASC'].sum()
         goals_ID =goals_scored/(goals_scored + goals_conceded)
         if vs:
             return (goals_ID, (1-goals_ID))
@@ -745,14 +751,18 @@ class Data:
         '''
         if months != None:
             months_period =self.matches[self.matches['Date'].isin(pd.date_range(end=self.today, periods=(months*30), freq='D')[::-1])]
-            wins = months_period[months_period["HID"] == ID]["H"].sum(min_count=1) + \
-                   months_period[months_period["AID"] == ID]["A"].sum(min_count=1)
+            wins = np.nan
+            if not months_period.empty:
+                wins = months_period[months_period["HID"] == ID]["H"].sum() + \
+                       months_period[months_period["AID"] == ID]["A"].sum()
             return wins
 
         else:
             matches_period =self.matches[(self.matches["HID"] == ID) | (self.matches["AID"] == ID)].sort_index()[-1-matches:-1]
-            wins = matches_period[matches_period["HID"] == ID]['H'].sum(min_count=1) + \
-                   matches_period[matches_period["AID"] == ID]['A'].sum(min_count=1)
+            wins = np.nan
+            if not matches_period.empty:
+                wins = matches_period[matches_period["HID"] == ID]['H'].sum() + \
+                       matches_period[matches_period["AID"] == ID]['A'].sum()
             return wins
     # }}}
 

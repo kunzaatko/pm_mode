@@ -26,6 +26,9 @@
 ### Random forest
 - [wikipedia - Random forest](https://en.wikipedia.org/wiki/Random_forest)
 
+### XGBoost
+- [Complete Guide to Parameter Tuning in XGBoost with codes in Python](https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/)
+
 ### Organizace
 - [Repozitář soutěže (data, vyhodnocovací loop)](https://github.com/IDA-CTU/hackathon/)
 - [Odevzdávací systém](http://hyperion.felk.cvut.cz:8081/)

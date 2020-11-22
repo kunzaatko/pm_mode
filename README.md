@@ -25,6 +25,7 @@
 
 ### Random forest
 - [wikipedia - Random forest](https://en.wikipedia.org/wiki/Random_forest)
+- [Ensemble methods: bagging, boosting and stacking](https://towardsdatascience.com/ensemble-methods-bagging-boosting-and-stacking-c9214a10a205)
 
 ### XGBoost
 - [Complete Guide to Parameter Tuning in XGBoost with codes in Python](https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/)

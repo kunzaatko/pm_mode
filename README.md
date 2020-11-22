@@ -29,6 +29,7 @@
 
 ### XGBoost
 - [Complete Guide to Parameter Tuning in XGBoost with codes in Python](https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/)
+- [XGBoost: A Scalable Tree Boosting System](https://arxiv.org/pdf/1603.02754.pdf)
 
 ### Organizace
 - [Repozitář soutěže (data, vyhodnocovací loop)](https://github.com/IDA-CTU/hackathon/)

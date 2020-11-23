@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 
 
 class PredictiveModel(object):
-    def __init__(self, data, classifier='rf', update_frequency=1):
+    def __init__(self, data, classifier='rf', update_frequency=1, n_most_recent=2000, use_recency=False):
         """
         :param data: Data()
             Instance of class Data()
@@ -26,13 +26,21 @@ class PredictiveModel(object):
                         'lr' - Logistic regression
                         'vc' - Voting classifier
         :param update_frequency: int:
-            Specifies how often to re-train model
+            Specifies how often to re-train model.
+        :param n_most_recent: int:
+            Specifies number of most recent matches which should be used to fit the model.
+            This approach should speed up whole learning process but set right value to this attribute will be essential
+        :param use_recency: bool:
+            Specifies if use self.n_most_recent attribute to speed up training
         """
         # TODO we will need to normalize cols of dataframe in class Data before training
         self.data = data  # instance of class Data(), containing table which will be used as data to train
         self.clf = classifier  # specifies type of model
         self.predictive_model = None  # here is stored already fitted model
+        self.imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
         self.update_frequency = update_frequency
+        self.n_most_recent = n_most_recent  # this will be used simply as parameter to pd.DataFrame.tail() func
+        self.use_recency = use_recency
         self.last_update = 0
         self.P_dis = None
         self.accuracy = pd.DataFrame()  # TODO implement me if needed
@@ -45,9 +53,11 @@ class PredictiveModel(object):
         """
         # we need to transform dataframe opps to structure as variable 'features' below in method _update_model here
         # or already in class Data
+
         to_be_predicted = self._preprocess(opps)
         # thanks to xgboost sklearn API this should work for XGBClassifier too
-        self.P_dis = self.predictive_model.predict_proba(to_be_predicted)
+        forecast = self.predictive_model.predict_proba(to_be_predicted)
+        self.P_dis = pd.DataFrame(columns=['P(H)', 'P(D)', 'P(A)'], data=forecast, index=opps.index)
 
     def _preprocess(self, opps):
         """
@@ -57,20 +67,16 @@ class PredictiveModel(object):
         :return:
         """
 
-        """
-        imputer = SimpleImputer(missing_values=np.nan, strategy='median', axis=0)
-        census_data[['fnlwgt']] = imputer.fit_transform(census_data[['fnlwgt']])
-        """
-        return opps
+        # we need only copy to not change values in atributes of class Data
+        to_be_predicted = self.data.return_values().to_numpy()  # this gives us 'fresh' opps containing also features for teams
+
+        # imputer is here already fitted on newest
+        return self.imputer.transform(to_be_predicted)
 
     def _update_model(self):
         """
         Re-train the model stored in self.predictive_model
         """
-        # It is assumed that in class Data() exist dataframe containing final data
-        # HID, AID needs to be one-hot encoded or not used
-        features = self.data.final_data[['HID', 'AID', 'H_diff_matches_1', '... some additional features']].to_numpy()
-        labels = self.data.final_data[['H', 'D', 'A']].to_numpy()
 
         ##########################################
         #  HERE SET THE CLASSIFIER'S PARAMETERS  #
@@ -174,8 +180,19 @@ class PredictiveModel(object):
         ##################
         # FIT THE MODEL  #
         ##################
-        self.predictive_model_model = clf.fit(features, np.argmax(labels,
-                                                                  axis=1))  # H has index 0, D has index 1, away has index 2
+        # It is assumed that in class Data() exist dataframe containing final data
+        # HID, AID needs to be one-hot encoded or not used
+        features = self.data.features[
+            ['HID', 'AID', 'H_diff_matches_1', '... some additional features']].copy()
+        labels = self.data.features[['H', 'D', 'A']].copy()  # here is copy not needed
+        if self.use_recency:
+            features = features.tail(self.n_most_recent)
+            labels = labels.tail(self.n_most_recent)
+        features = features.to_numpy()
+        labels = labels.to_numpy()
+        features = self.imputer.fit_transform(features)
+        self.predictive_model = clf.fit(features, np.argmax(labels,
+                                                                  axis=1))  # H has index 0, D has index 1, A has index 2
         ##################
         # FOR DEBUGGING  #
         ##################

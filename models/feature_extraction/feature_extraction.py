@@ -13,19 +13,32 @@ class Data:
 
     # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
-    def __init__(self, sort_columns=True):
+    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, eval_features=True):
     # {{{
         '''
         Parameters:
             sort_columns(True): Sort the columns of the dataframes
+            optional_data_cols(list(str)): possible values:
+                'ELO_rating' - calculate the ELO rating as a feature in the LL_data DataFrame
+            ELO_mean_ELO(int): ELO, that teams start with
+            ELO_k_factor(int): maximum ELO points exchanged in one match
         '''
 
         ########################
         #  private attributes  #
         ########################
         self._sort_columns = sort_columns
-        self._curr_inc_teams= None # teams that are in inc
-        self._curr_opps_teams= None # teams that are in opps
+        self._curr_inc_teams = None # teams that are in inc
+        self._curr_opps_teams = None # teams that are in opps
+        self._opps_matches = None
+        self._matches_not_registered_to_features = None # matches, that were not yet counted into team features
+
+        if 'ELO_rating' in optional_data_cols:
+            self.ELO_rating = True
+            self.ELO_mean_ELO = ELO_mean_ELO
+            self.ELO_k_factor = ELO_k_factor
+        else:
+            self.ELO_rating = False
 
         ########################
         #  Storage attributes  #
@@ -64,6 +77,9 @@ class Data:
         #          | played matches | model accuracy
         self.LL_data = pd.DataFrame(columns=['LID','LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']) # recorded teams
 
+        if self.ELO_rating:
+            self.LL_data['ELO_rating'] = np.nan
+
         # `self.SL_data`
         # SL: season-long
         # index (multiindex)|| 'LID'            | 'SL_Goals_Scored' | 'SL_Goals_Conceded' | 'SL_Wins' | 'SL_Draws' | 'SL_Loses'
@@ -79,6 +95,11 @@ class Data:
         #          | 'M_Win'   | 'M_Draw'  | 'M_Lose'   | 'M_P(Win)'      | 'M_P(Draw)'      | 'M_P(Lose)'      | 'M_Accu'
         #          | match win | match draw| match lose | model prob. win | model prob. draw | model prob. lose | model accuracy
         self.match_data = pd.DataFrame(columns=['MatchID', 'Date' , 'Oppo', 'Home', 'Away',  'M_Goals_Scored', 'M_Goals_Conceded', 'M_Win','M_Draw', 'M_Lose','M_P(Win)','M_P(Draw)', 'M_P(Lose)','M_Accu'])
+
+        # `self.features`
+        # index || 'H_GS_GC_diff_#5'|'A_GS_GC_diff_#5' | 'H_GS_#' | 'A_GS_#' | 'H_GC_#' | 'A_GC_#' | 'H_WR_#' | 'A_WR_#' | 'H_DR_#' | 'A_DR_#' | 'H_LR_#' | 'A_Lr_#' |
+        # MatchID || goals scored - goals conceded in last 15 matches for home team | goals scored - goals conceded difference in last 15 matches for away team | home goals scored in last # matches | away goals scored in last # matches | home win rate in last # matches | away lose rate in last # matches | home draw rate in last # matches | away draw rate in last # matches | home lose rate in last # matches | away lose rate in last # matches |
+        self.features = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'])
     # }}}
 
     ######################################
@@ -121,7 +142,7 @@ class Data:
 
         if self._sort_columns:
             self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
-            self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']]
+            self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu','ELO_rating']]
 
         # }}}
 
@@ -136,10 +157,28 @@ class Data:
         # {{{
         self._eval_teams(inc, self._curr_inc_teams)
         self._eval_matches(inc,update_columns=['HSC','ASC','H','D','A'])
+        self._eval_inc_update_ELO(inc)
         # }}}
+
+    def _eval_inc_update_ELO(self, inc):
+    # {{{
+        '''
+        Update the ELO ratings for the new incremented data.
+        '''
+        def elo_for_one_team(row):
+            Home_ID,Away_ID,Home_win,_,Away_win = row.HID,row.AID,row.H,row.D,row.A
+            [Home_elo, Away_elo] = [self.LL_data.at[ID,'ELO_rating'] for ID in [Home_ID,Away_ID]]
+            [Home_expected, Away_expected] = [1/(1+10**((elo_1 - elo_2) / 400)) for (elo_1, elo_2) in [(Away_elo, Home_elo), (Home_elo, Away_elo)]]
+            if any([Home_win,Away_win]):
+                self.LL_data.at[Home_ID, 'ELO_rating'] += self.ELO_k_factor * (Home_win - Home_expected)
+                self.LL_data.at[Away_ID, 'ELO_rating'] += self.ELO_k_factor * (Away_win - Away_expected)
+
+        inc.apply(elo_for_one_team,axis=1)
+    # }}}
 
     def _EVAL_opps(self, opps):
         # {{{
+        self._opps_matches = opps.index.to_numpy()
         self._eval_teams(opps, self._curr_inc_teams)
         self._eval_matches(opps, update_columns=['Sea','Date','LID','HID','AID','Open','OddsH','OddsA','OddsD'])
         # }}}
@@ -177,6 +216,8 @@ class Data:
                 lids = lids_frame[~lids_frame.index.duplicated(keep='first')].loc[index_new_teams]
                 # Making a list from the 'LID's
                 new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+                if self.ELO_rating:
+                    new_teams['ELO_rating'] = self.ELO_mean_ELO
                 self.LL_data = pd.concat((self.LL_data, new_teams))
                 self.LL_data.fillna(0., inplace=True)
 
@@ -235,6 +276,7 @@ class Data:
         self._UPDATE_LL_data_features()
         #self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
+        self._UPDATE_features()
     # }}}
 
     def _UPDATE_LL_data_features(self):
@@ -454,29 +496,9 @@ class Data:
         self.match_data = self.match_data.append([matches_away, matches_home])
     # }}}
 
-
-    # ┌─────────────────────┐
-    # │ MATCHES GLOBAL DATA │
-    # └─────────────────────┘
-
-    def matches_with(self, ID, oppo_ID):
-    # {{{
-        '''
-        Returns all the matches with a particular opponent.
-
-        Parameters:
-            oppo_ID(int): ID of the opponent.
-            ID(int): team id
-
-        Returns:
-            pd.DataFrame
-        '''
-        pass
-    # }}}
-
-    # ┌───────────────────────────┐
-    # │ LIFE-LONG CHARACTERISTICS │
-    # └───────────────────────────┘
+    ##############
+    #  FEATURES  #
+    ##############
 
     def total_goals_to_match(self, ID, number_of_matches, MatchID=None, goal_type='scored'):
     # {{{
@@ -489,8 +511,6 @@ class Data:
             goal_type(str): 'scored'/'conceded'
 
         Returns:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             float: scored goals / # matches
         '''
         pass
@@ -845,7 +865,68 @@ class Data:
             return away_lose_r
     # }}}
 
-# plain numpy runs it faster about 4 ms, njit nor jit did not give better performance (tested on np.ndarray with shape (74664, 2))
+    def elo_diff(self, MatchID):
+    # {{{
+        '''
+        Returns the difference of the ELO ratings of the two teams playing in the match. (ELO_home - ELO_away)
+        '''
+        return self.LL_data.loc[self.matches.loc[MatchID].HID].ELO_rating - self.LL_data.loc[self.matches.loc[MatchID].AID].ELO_rating
+    # }}}
+
+    ###################
+    #  RETURN VALUES  #
+    ###################
+
+    def _UPDATE_features(self):
+        '''
+        Updates the features in the attribute `self.features`
+        '''
+
+        def update_for_match(row):
+            MatchID = row.name
+            home_team,away_team  = self.matches.loc[row.name].HID,self.matches.loc[row.name].AID
+            home_matches,away_matches  = self.match_data.loc[home_team],self.match_data.loc[away_team]
+            home_last_15,away_last_15 = home_matches.tail(15),away_matches.tail(15)
+
+            sum_home_last_15_r = home_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(home_last_15)
+            sum_away_last_15_r = away_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(away_last_15)
+
+            # H_GS_GC_diff_#15
+            new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = sum_home_last_15_r.M_Goals_Scored - sum_home_last_15_r.M_Goals_Conceded
+
+            # A_GS_GC_diff_#15
+            new_feature_frame.at[MatchID,'A_GS_GC_diff_#15'] = sum_away_last_15_r.M_Goals_Scored - sum_away_last_15_r.M_Goals_Conceded
+
+            # H_GS_# && H_GC_# && H_WR_#
+            new_feature_frame.at[MatchID, 'H_GS_#'] = sum_home_last_15_r.M_Goals_Scored
+            new_feature_frame.at[MatchID, 'H_GC_#'] = sum_home_last_15_r.M_Goals_Conceded
+            new_feature_frame.at[MatchID, 'H_WR_#'] = sum_home_last_15_r.M_Win
+            new_feature_frame.at[MatchID, 'H_DR_#'] = sum_home_last_15_r.M_Draw
+            new_feature_frame.at[MatchID, 'H_LR_#'] = sum_home_last_15_r.M_Lose
+
+            # A_GS_# && A_GC_#
+            new_feature_frame.at[MatchID, 'A_GS_#'] = sum_away_last_15_r.M_Goals_Scored
+            new_feature_frame.at[MatchID, 'A_GC_#'] = sum_away_last_15_r.M_Goals_Conceded
+            new_feature_frame.at[MatchID, 'A_WR_#'] = sum_away_last_15_r.M_Win
+            new_feature_frame.at[MatchID, 'A_DR_#'] = sum_away_last_15_r.M_Draw
+            new_feature_frame.at[MatchID, 'A_LR_#'] = sum_away_last_15_r.M_Lose
+
+        # one team is not more times in any `opps`
+        unregistered_matches = np.setdiff1d(self._opps_matches, self.features.index.to_numpy())
+        # new data frame that will be appended to self.features
+        new_feature_frame = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'], index=unregistered_matches)
+        new_feature_frame.apply(update_for_match,axis=1)
+        self.features = pd.concat((self.features,new_feature_frame))
+
+
+    def return_values(self):
+        '''
+        Return the values of the features in `self.today`
+        '''
+        return self.features.loc[self._opps_matches]
+
+
+# plain numpy runs it faster about 4 ms, njit not jit did nor give better performance (tested on np.ndarray with shape (74664, 2))
 # plain numpy: 98.8 ms ± 189 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
 # using numba njit ( AKA jit(nopython=True)): 102 ms ± 122 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
 # using numba jit (AKA jit(nopython=False)): 102 ms ± 96.9 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)

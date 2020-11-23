@@ -465,7 +465,10 @@ class Data:
         '''
         Populate all the features of `self.match_data`
         '''
-        if self.yesterday in self.matches['Date'].to_numpy():
+        # if we are on the first inc or we skiped some dates...
+        if not np.setdiff1d(self.matches.Date.to_numpy()[self.matches.Date.to_numpy() < self.yesterday],self.match_data.Date.to_numpy()).size == 0:
+            self._update_add_matches(self.matches[self.matches.Date <= self.yesterday])
+        elif self.yesterday in self.matches['Date'].to_numpy():
             # a dataframe of all the todays matches (matches that where played on `self.today`)
             matches_played_yesterday = self.matches.groupby('Date').get_group(self.yesterday)
             self._update_add_matches(matches_played_yesterday)
@@ -887,7 +890,6 @@ class Data:
         '''
         Updates the features in the attribute `self.features`
         '''
-
         def update_for_match(row):
             MatchID = row.name
             home_team,away_team  = self.matches.loc[row.name].HID,self.matches.loc[row.name].AID

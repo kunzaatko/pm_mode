@@ -460,7 +460,7 @@ class Data:
         '''
         Populate all the features of `self.match_data`
         '''
-        if self.yesterday in self.matches['Date'].values:
+        if self.yesterday in self.matches['Date'].to_numpy():
             # a dataframe of all the todays matches (matches that where played on `self.today`)
             matches_played_yesterday = self.matches.groupby('Date').get_group(self.yesterday)
             self._update_add_matches(matches_played_yesterday)
@@ -476,7 +476,7 @@ class Data:
         '''
         # the matches that played as home
         matches_home = matches_played_yesterday.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
-        renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'P(Win)', 'P(D)':'P(Draw)', 'P(A)':'P(Lose)'}
+        renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(A)':'M_P(Lose)'}
         matches_home.rename(renames, axis=1, inplace=True)
         matches_home['Home'] = 1
         matches_home['Away'] = 0
@@ -485,7 +485,7 @@ class Data:
 
         # the matches that played as away
         matches_away = matches_played_yesterday.set_index('AID').drop(labels=['Open','opps_Date'],axis=1)
-        renames = {'HID':'Oppo', 'ASC':'M_Goals_Scored', 'HSC':'M_Goals_Conceded', 'A':'M_Win', 'D':'M_Draw', 'H':'M_Lose', 'P(A)':'P(Win)', 'P(D)':'P(Draw)', 'P(H)':'P(Lose)'}
+        renames = {'HID':'Oppo', 'ASC':'M_Goals_Scored', 'HSC':'M_Goals_Conceded', 'A':'M_Win', 'D':'M_Draw', 'H':'M_Lose', 'P(A)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(H)':'M_P(Lose)'}
         matches_away.rename(renames, axis=1, inplace=True)
         matches_away['Home'] = 0
         matches_away['Away'] = 1
@@ -886,10 +886,21 @@ class Data:
             MatchID = row.name
             home_team,away_team  = self.matches.loc[row.name].HID,self.matches.loc[row.name].AID
             home_matches,away_matches  = self.match_data.loc[home_team],self.match_data.loc[away_team]
-            home_last_15,away_last_15 = home_matches.tail(15),away_matches.tail(15)
 
-            sum_home_last_15_r = home_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(home_last_15)
-            sum_away_last_15_r = away_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(away_last_15)
+            if type(home_matches) == pd.DataFrame:
+                home_last_15 = home_matches.tail(15)
+                sum_home_last_15_r = home_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(home_last_15)
+            else:
+                sum_home_last_15_r = home_matches.loc[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']]
+
+
+            if type(away_matches) == pd.DataFrame:
+                away_last_15 = away_matches.tail(15)
+                sum_away_last_15_r = away_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(away_last_15)
+            else:
+                sum_away_last_15_r = away_matches.loc[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']]
+
+
 
             # H_GS_GC_diff_#15
             new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = sum_home_last_15_r.M_Goals_Scored - sum_home_last_15_r.M_Goals_Conceded

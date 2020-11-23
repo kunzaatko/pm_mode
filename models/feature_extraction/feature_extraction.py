@@ -13,7 +13,7 @@ class Data:
 
     # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
-    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, eval_features=True):
+    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, LL_data = True):
     # {{{
         '''
         Parameters:
@@ -157,7 +157,9 @@ class Data:
         # {{{
         self._eval_teams(inc, self._curr_inc_teams)
         self._eval_matches(inc,update_columns=['HSC','ASC','H','D','A'])
-        self._eval_inc_update_ELO(inc)
+
+        if self.ELO_rating:
+            self._eval_inc_update_ELO(inc)
         # }}}
 
     def _eval_inc_update_ELO(self, inc):
@@ -878,6 +880,7 @@ class Data:
     ###################
 
     def _UPDATE_features(self):
+    # {{{
         '''
         Updates the features in the attribute `self.features`
         '''
@@ -928,14 +931,15 @@ class Data:
         new_feature_frame = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'], index=unregistered_matches)
         new_feature_frame.apply(update_for_match,axis=1)
         self.features = pd.concat((self.features,new_feature_frame))
-
+    # }}}
 
     def return_values(self):
+    # {{{
         '''
         Return the values of the features in `self.today`
         '''
         return self.features.loc[self._opps_matches]
-
+    # }}}
 
 # plain numpy runs it faster about 4 ms, njit not jit did nor give better performance (tested on np.ndarray with shape (74664, 2))
 # plain numpy: 98.8 ms ± 189 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)

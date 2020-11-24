@@ -62,7 +62,7 @@ class PredictiveModel(object):
         # or already in class Data
 
         # thanks to xgboost sklearn API this should work for XGBClassifier too
-        to_be_predicted = self.data.return_values().to_numpy()  # this gives us 'fresh' opps containing also features for teams
+        to_be_predicted = self.data.return_values().copy().to_numpy()  # this gives us 'fresh' opps containing also features for teams
         forecast = self.pipeline.predict_proba(to_be_predicted)
         self.P_dis = pd.DataFrame(columns=['P(H)', 'P(D)', 'P(A)'], data=forecast, index=opps.index)
 
@@ -201,9 +201,8 @@ class PredictiveModel(object):
         ##################
         # It is assumed that in class Data() exist dataframe containing final data
         # HID, AID needs to be one-hot encoded or not used
-        features = self.data.features[
-            ['HID', 'AID', 'H_diff_matches_1', '... some additional features']].copy()
-        labels = self.data.features[['H', 'D', 'A']].copy()  # here is copy not needed
+        features = self.data.features.copy()
+        labels = self.data.matches[['H', 'D', 'A']].copy()
 
         if self.use_recency:
             features = features.tail(self.n_most_recent)
@@ -221,10 +220,10 @@ class PredictiveModel(object):
         ##################
         # FOR DEBUGGING  #
         ##################
-        if self.clf in ['rf', 'ab', 'xgb', 'gb']:
-            print(
-                f"{self.predictive_model.__class__.__name__} train accuracy: {self.predictive_model.score(features, np.argmax(labels, axis=1))}")
+        print(f"{self.predictive_model.__class__.__name__} train accuracy: "
+              f"{self.pipeline.score(features, np.argmax(labels, axis=1))}")
 
+        if self.clf in ['rf', 'ab', 'xgb', 'gb']:  # FEATURES IMPORTANCES works only for tree based algorithms !!!
             # FEATURES IMPORTANCES # Warning: impurity-based feature importances can be misleading for high
             # cardinality features (many unique values). See sklearn.inspection.permutation_importance as an
             # alternative.

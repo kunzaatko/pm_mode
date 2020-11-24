@@ -282,7 +282,7 @@ class Data:
         #self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
         self._UPDATE_features()
-        self.features.sort_index()
+        self.features = self.features.sort_index()
     # }}}
 
     def _UPDATE_LL_data_features(self):

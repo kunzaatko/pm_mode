@@ -266,7 +266,7 @@ class Data:
         self.matches.update(data_frame[update_columns].loc[old_matches])
         new_matches = np.setdiff1d(data_frame.index.to_numpy(dtype='int32'),old_matches)
         # if there are no such indices, then append whole frame
-        self.matches = self.matches.append(data_frame.loc[new_matches])
+        self.matches = self.matches.append(data_frame.loc[new_matches]).sort_index()
         # }}}
 
         #####################################################################
@@ -282,6 +282,7 @@ class Data:
         #self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
         self._UPDATE_features()
+        self.features.sort_index()
     # }}}
 
     def _UPDATE_LL_data_features(self):

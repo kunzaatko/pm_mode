@@ -894,43 +894,87 @@ class Data:
             MatchID = row.name
             match_date = self.matches.loc[MatchID].Date
             home_team,away_team  = self.matches.loc[MatchID].HID,self.matches.loc[MatchID].AID
+
+            home_all_matches = self.match_data.loc[home_team]
+            away_all_matches = self.match_data.loc[away_team]
             # only taking matches that are older, than the currently analysed
-            home_matches,away_matches  = self.match_data.loc[home_team][self.match_data.loc[home_team].Date < match_date],self.match_data.loc[away_team][self.match_data.loc[away_team].Date < match_date]
+            if type(home_all_matches) == pd.DataFrame: # there are multiple matches
+                home_matches = home_all_matches[self.match_data.loc[home_team].Date < match_date]
+            elif type(home_all_matches) == pd.Series: # there is only one match therefore the `home_all_matches` is a `pd.Series`
+                home_matches = home_all_matches if home_all_matches.loc['Date'] < match_date else None
+            else: # there is no match
+                home_matches = None
+
+
+            if type(away_all_matches) == pd.DataFrame: # there are multiple matches
+                away_matches = away_all_matches[self.match_data.loc[away_team].Date < match_date]
+            elif type(home_all_matches) == pd.Series: # there is only one match therefore the `away_all_matches` is a `pd.Series`
+                away_matches = away_all_matches if away_all_matches.loc['Date'] < match_date else None
+            else: # there is no match
+                away_matches = None
 
             if type(home_matches) == pd.DataFrame:
                 home_last_15 = home_matches.tail(15)
                 sum_home_last_15_r = home_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(home_last_15)
-            else:
+            elif type(home_matches) == pd.Series:
                 sum_home_last_15_r = home_matches.loc[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']]
+            else:
+                sum_home_last_15_r = None
 
 
             if type(away_matches) == pd.DataFrame:
                 away_last_15 = away_matches.tail(15)
                 sum_away_last_15_r = away_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(away_last_15)
-            else:
+            elif type(away_matches) == pd.Series:
                 sum_away_last_15_r = away_matches.loc[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']]
+            else:
+                sum_away_last_15_r = None
 
 
 
-            # H_GS_GC_diff_#15
-            new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = sum_home_last_15_r.M_Goals_Scored - sum_home_last_15_r.M_Goals_Conceded
+            if not sum_home_last_15_r is None:
+                # H_GS_GC_diff_#15
+                new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = sum_home_last_15_r.M_Goals_Scored - sum_home_last_15_r.M_Goals_Conceded
 
-            # A_GS_GC_diff_#15
-            new_feature_frame.at[MatchID,'A_GS_GC_diff_#15'] = sum_away_last_15_r.M_Goals_Scored - sum_away_last_15_r.M_Goals_Conceded
+                # H_GS_# && H_GC_# && H_WR_#
+                new_feature_frame.at[MatchID, 'H_GS_#'] = sum_home_last_15_r.M_Goals_Scored
+                new_feature_frame.at[MatchID, 'H_GC_#'] = sum_home_last_15_r.M_Goals_Conceded
+                new_feature_frame.at[MatchID, 'H_WR_#'] = sum_home_last_15_r.M_Win
+                new_feature_frame.at[MatchID, 'H_DR_#'] = sum_home_last_15_r.M_Draw
+                new_feature_frame.at[MatchID, 'H_LR_#'] = sum_home_last_15_r.M_Lose
+            else:
+                # H_GS_GC_diff_#15
+                new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = np.nan
 
-            # H_GS_# && H_GC_# && H_WR_#
-            new_feature_frame.at[MatchID, 'H_GS_#'] = sum_home_last_15_r.M_Goals_Scored
-            new_feature_frame.at[MatchID, 'H_GC_#'] = sum_home_last_15_r.M_Goals_Conceded
-            new_feature_frame.at[MatchID, 'H_WR_#'] = sum_home_last_15_r.M_Win
-            new_feature_frame.at[MatchID, 'H_DR_#'] = sum_home_last_15_r.M_Draw
-            new_feature_frame.at[MatchID, 'H_LR_#'] = sum_home_last_15_r.M_Lose
+                # H_GS_# && H_GC_# && H_WR_#
+                new_feature_frame.at[MatchID, 'H_GS_#'] = np.nan
+                new_feature_frame.at[MatchID, 'H_GC_#'] = np.nan
+                new_feature_frame.at[MatchID, 'H_WR_#'] = np.nan
+                new_feature_frame.at[MatchID, 'H_DR_#'] = np.nan
+                new_feature_frame.at[MatchID, 'H_LR_#'] = np.nan
 
-            # A_GS_# && A_GC_#
-            new_feature_frame.at[MatchID, 'A_GS_#'] = sum_away_last_15_r.M_Goals_Scored
-            new_feature_frame.at[MatchID, 'A_GC_#'] = sum_away_last_15_r.M_Goals_Conceded
-            new_feature_frame.at[MatchID, 'A_WR_#'] = sum_away_last_15_r.M_Win
-            new_feature_frame.at[MatchID, 'A_DR_#'] = sum_away_last_15_r.M_Draw
-            new_feature_frame.at[MatchID, 'A_LR_#'] = sum_away_last_15_r.M_Lose
+
+
+            if not sum_away_last_15_r is None:
+                # A_GS_GC_diff_#15
+                new_feature_frame.at[MatchID,'A_GS_GC_diff_#15'] = sum_away_last_15_r.M_Goals_Scored - sum_away_last_15_r.M_Goals_Conceded
+
+                # A_GS_# && A_GC_#
+                new_feature_frame.at[MatchID, 'A_GS_#'] = sum_away_last_15_r.M_Goals_Scored
+                new_feature_frame.at[MatchID, 'A_GC_#'] = sum_away_last_15_r.M_Goals_Conceded
+                new_feature_frame.at[MatchID, 'A_WR_#'] = sum_away_last_15_r.M_Win
+                new_feature_frame.at[MatchID, 'A_DR_#'] = sum_away_last_15_r.M_Draw
+                new_feature_frame.at[MatchID, 'A_LR_#'] = sum_away_last_15_r.M_Lose
+            else:
+                # A_GS_GC_diff_#15
+                new_feature_frame.at[MatchID,'A_GS_GC_diff_#15'] = np.nan
+
+                # A_GS_# && A_GC_#
+                new_feature_frame.at[MatchID, 'A_GS_#'] = np.nan
+                new_feature_frame.at[MatchID, 'A_GC_#'] = np.nan
+                new_feature_frame.at[MatchID, 'A_WR_#'] = np.nan
+                new_feature_frame.at[MatchID, 'A_DR_#'] = np.nan
+                new_feature_frame.at[MatchID, 'A_LR_#'] = np.nan
 
         # teams that do not have features yet
         unregistered_matches = np.setdiff1d(self.matches.index.to_numpy(), self.features.index.to_numpy())

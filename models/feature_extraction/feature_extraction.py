@@ -282,7 +282,6 @@ class Data:
         #self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
         self._UPDATE_features()
-        self.features = self.features.sort_index()
     # }}}
 
     def _UPDATE_LL_data_features(self):
@@ -982,7 +981,7 @@ class Data:
         # new data frame that will be appended to self.features
         new_feature_frame = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'], index=unregistered_matches)
         new_feature_frame.apply(update_for_match,axis=1)
-        self.features = pd.concat((self.features,new_feature_frame))
+        self.features = pd.concat((self.features,new_feature_frame)).sort_index()
     # }}}
 
     def return_values(self):

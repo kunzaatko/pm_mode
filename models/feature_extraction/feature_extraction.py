@@ -183,7 +183,7 @@ class Data:
 
     def _EVAL_opps(self, opps):
         # {{{
-        self._opps_matches = opps.index.to_numpy()
+        self.opps_matches = opps.index.to_numpy()
         self._eval_teams(opps, self._curr_inc_teams)
         self._eval_matches(opps, update_columns=['Sea','Date','LID','HID','AID','Open','OddsH','OddsA','OddsD'])
         # }}}
@@ -989,7 +989,7 @@ class Data:
         '''
         Return the values of the features in `self.today`
         '''
-        return self.features.loc[self._opps_matches]
+        return self.features.loc[self.opps_matches]
     # }}}
 
 # plain numpy runs it faster about 4 ms, njit not jit did nor give better performance (tested on np.ndarray with shape (74664, 2))

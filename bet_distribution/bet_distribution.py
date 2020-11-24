@@ -152,4 +152,3 @@ class Bet_distribution:
         self.update_bets()
         # this should remove teams from self.matches_already_bet if present in inc, inc param have to be added to run_iter func
         #self.eval_inc(inc)
-

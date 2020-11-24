@@ -892,8 +892,10 @@ class Data:
         '''
         def update_for_match(row):
             MatchID = row.name
-            home_team,away_team  = self.matches.loc[row.name].HID,self.matches.loc[row.name].AID
-            home_matches,away_matches  = self.match_data.loc[home_team],self.match_data.loc[away_team]
+            match_date = self.matches.loc[MatchID].Date
+            home_team,away_team  = self.matches.loc[MatchID].HID,self.matches.loc[MatchID].AID
+            # only taking matches that are older, than the currently analysed
+            home_matches,away_matches  = self.match_data.loc[home_team][self.match_data.loc[home_team].Date < match_date],self.match_data.loc[away_team][self.match_data.loc[away_team].Date < match_date]
 
             if type(home_matches) == pd.DataFrame:
                 home_last_15 = home_matches.tail(15)
@@ -930,8 +932,8 @@ class Data:
             new_feature_frame.at[MatchID, 'A_DR_#'] = sum_away_last_15_r.M_Draw
             new_feature_frame.at[MatchID, 'A_LR_#'] = sum_away_last_15_r.M_Lose
 
-        # one team is not more times in any `opps`
-        unregistered_matches = np.setdiff1d(self._opps_matches, self.features.index.to_numpy())
+        # teams that do not have features yet
+        unregistered_matches = np.setdiff1d(self.matches.index.to_numpy(), self.features.index.to_numpy())
         # new data frame that will be appended to self.features
         new_feature_frame = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'], index=unregistered_matches)
         new_feature_frame.apply(update_for_match,axis=1)

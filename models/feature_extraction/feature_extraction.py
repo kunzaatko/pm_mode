@@ -30,7 +30,6 @@ class Data:
         self._sort_columns = sort_columns
         self._curr_inc_teams = None # teams that are in inc
         self._curr_opps_teams = None # teams that are in opps
-        self._opps_matches = None
         self._matches_not_registered_to_features = None # matches, that were not yet counted into team features
 
         if 'ELO_rating' in optional_data_cols:
@@ -46,6 +45,7 @@ class Data:
         self.yesterday = None # this is used for initialization in very first inc of data and then as reference to yesterday
         self.today = None # current date
         self.bankroll = None # current bankroll
+        self.opps_matches = None
 
         ##########################
         #  Essential attributes  #

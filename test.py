@@ -16,26 +16,11 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler, Normalizer, OneHotEncoder
 
 class Data:
-    '''
-    Class for manipulating the data and extracting characteristics.
-
-    Attributes:
-        today (pd.datetime64): current date (`pandas._libs.tslibs.timestamps.Timestamp`)
-        self.bankroll (int): bankroll from the summary
-    '''
 
     # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
     def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, LL_data = True):
     # {{{
-        '''
-        Parameters:
-            sort_columns(True): Sort the columns of the dataframes
-            optional_data_cols(list(str)): possible values:
-                'ELO_rating' - calculate the ELO rating as a feature in the LL_data DataFrame
-            ELO_mean_ELO(int): ELO, that teams start with
-            ELO_k_factor(int): maximum ELO points exchanged in one match
-        '''
 
         ########################
         #  private attributes  #
@@ -121,16 +106,6 @@ class Data:
 
     def update_data(self, opps=None ,summary=None, inc=None, P_dis=None, bets=None):
         # {{{
-        '''
-        Run the iteration update of the data stored.
-        ! Summary has to be updated first to get the right date!
-
-        Parameters:
-        All the parameters are supplied by the evaluation loop.
-        opps(pandas.DataFrame): dataframe that includes the opportunities for betting.
-        summary(pandas.DataFrame): includes the `Max_bet`, `Min_bet` and `Bankroll`.
-        inc(pandas.DataFrame): includes the played matches with the scores for the model.
-        '''
         if summary is not None:
             self._EVAL_summary(summary)
 
@@ -180,9 +155,6 @@ class Data:
 
     def _eval_inc_update_ELO(self, inc):
     # {{{
-        '''
-        Update the ELO ratings for the new incremented data.
-        '''
         def elo_for_one_team(row):
             Home_ID,Away_ID,Home_win,_,Away_win = row.HID,row.AID,row.H,row.D,row.A
             [Home_elo, Away_elo] = [self.LL_data.at[ID,'ELO_rating'] for ID in [Home_ID,Away_ID]]
@@ -288,9 +260,6 @@ class Data:
 
     def update_features(self):
     # {{{
-        '''
-        Update the features for the data stored in `self`.
-        '''
         self._UPDATE_LL_data_features()
         #self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
@@ -299,9 +268,6 @@ class Data:
 
     def _UPDATE_LL_data_features(self):
     # {{{
-        '''
-        Populate all the features from the frame `self.LL_data`
-        '''
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
             else None
@@ -316,11 +282,6 @@ class Data:
 
     def _update_LL_Played(self, matches_played):
     # {{{
-        '''
-        Update 'LL_Played' (games) of the fram self.LL_data
-        :param matches_played: pd.Dataframe:
-            Contains matches played at self.yesterday
-        '''
         if matches_played is not None:
             teams_played = np.unique(np.concatenate((matches_played['HID'].to_numpy(dtype='int64'),
                                                      matches_played['AID'].to_numpy(dtype='int64'))), return_counts=True)
@@ -330,9 +291,6 @@ class Data:
 
     def _update_LL_Goals(self, matches_played):
     # {{{
-        '''
-        Update 'LL_Goals_Scored' and 'LL_Goals_Conceded' of the frame `self.LL_data`
-        '''
         if matches_played is not None:
             teams_goals_scored = np.concatenate([matches_played[['HID', 'HSC']].to_numpy(dtype='int64'),
                                                  matches_played[['AID', 'ASC']].to_numpy(dtype='int64')])
@@ -349,9 +307,6 @@ class Data:
 
     def _update_LL_Res(self, matches_played):
     # {{{
-        '''
-        Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.LL_data`
-        '''
         if matches_played is not None:
             teams_wins = np.concatenate([matches_played[['HID', 'H']].to_numpy(dtype='int64'),
                                                  matches_played[['AID', 'A']].to_numpy(dtype='int64')])
@@ -371,18 +326,12 @@ class Data:
 
     def _update_LL_Accu(self, matches_played):
     # {{{
-        '''
-        Update 'LL_Accu' of the frame `self.LL_data`
-        '''
         if matches_played is not None:
             pass
     # }}}
 
     def _UPDATE_SL_data_features(self):
     # {{{
-        '''
-        Populate all the features of `self.SL_data`
-        '''
         # TODO: should be done incrementaly <17-11-20, kunzaatko> #
         # TODO I assume that 'self.SL_data' are updated when new team will be present in 'inc' (Many98)
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
@@ -398,9 +347,6 @@ class Data:
     # TODO: Could be unified with `_update_LL_Goals` as `_update_Goals` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Goals(self, matches_played):
     # {{{
-        '''
-        Update 'SL_Goals_Scored' and 'SL_Goals_Conceded' of the frame `self.SL_data`
-        '''
         if matches_played is not None:
             seasons = [season for season in matches_played.groupby('Sea')]
             for sea, season in seasons:
@@ -467,17 +413,11 @@ class Data:
     # TODO: Could be unified with `_update_LL_Accu` as `_update_Accu` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Accu(self, matches_played):
     # {{{
-        '''
-        Update 'SL_Accu' of the frame `self.LL_data`
-        '''
         pass
     # }}}
 
     def _UPDATE_match_data_features(self):
     # {{{
-        '''
-        Populate all the features of `self.match_data`
-        '''
         # if we are on the first inc or we skiped some dates...
         if not np.setdiff1d(self.matches.Date.to_numpy()[self.matches.Date.to_numpy() < self.yesterday],self.match_data.Date.to_numpy()).size == 0:
             self._update_add_matches(self.matches[self.matches.Date <= self.yesterday])
@@ -492,9 +432,6 @@ class Data:
     # FIXME: does not update the matches that are not gone through at today... The matches in the first inc. <18-11-20, kunzaatko> #
     def _update_add_matches(self, matches_played_yesterday):
     # {{{
-        '''
-        Add the matches that were played yesterday. The fields 'MatchID', 'Date' == self.yesterday, 'Oppo' == HID/AID, 'Home' & 'Away' (int 1/0), 'M_Goals_Scored' & 'M_Goals_Conceded' (int), 'M_Win' & 'M_Draw' & 'M_Lose' (int 1/0), 'M_P(Win)' & 'M_P(Draw)' & 'M_P(Lose)' (float), 'M_Accu' should be filled.
-        '''
         # the matches that played as home
         matches_home = matches_played_yesterday.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
         renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(A)':'M_P(Lose)'}
@@ -523,34 +460,12 @@ class Data:
 
     def total_goals_to_match(self, ID, number_of_matches, MatchID=None, goal_type='scored'):
     # {{{
-        '''
-        Total life-long goal to match ratio.
-
-        Parameters:
-            ID(int): team id
-            number_of_matches(int): num
-            goal_type(str): 'scored'/'conceded'
-
-        Returns:
-            float: scored goals / # matches
-        '''
         pass
     # }}}
 
     # TODO features working with goals_scored/conceded for particluar team should be wrapped to one method
     def goals_difference_to_num_matches(self, team_id, num_matches=1):
     # {{{
-        """
-        Calculates (GS-GC) of specific team from goals scored and conceded in particular number of matches played before.
-        This feature should somehow aggregate information about team attack and defensive strength.
-        :param team_id: int:
-            Specifies particular team
-        :param num_matches: int:
-            Specifies particular number of matches from which the goals characteristics should be included.
-            Default is set to 1.
-        :return: int:
-
-        """
         if type(num_matches) is not int or num_matches == 0:
             num_matches = 1
 
@@ -575,22 +490,6 @@ class Data:
 
     def goals_difference_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
     # {{{
-        """
-        Calculates (GS-GC) of specific team from goals scored and conceded in particular time period played before.
-        This feature should somehow aggregate information about team attack and defensive strength.
-        :param time_period_num: int:
-            Specifies particular number of time period (specified in param 'time_period_type') from which the goals
-            characteristics should be included.
-        :param time_period_type: str:
-            Possible values are: 'W' : week(fixed to 7 days)
-                                 'M' : month(fixed to 30 days)
-                                 'Y' : year(fixed to 365 days)
-                                 'S' : season(using self.SL_data)
-                                 'L' : life(using self.LL_data)
-        :param team_id: int:
-            Specifies particular team
-        :return: int:
-        """
         if time_period_type not in ['W', 'M', 'Y', 'S', 'L']:
             time_period_type = 'M'
         if type(time_period_num) is not int or time_period_num == 0:
@@ -633,15 +532,6 @@ class Data:
 
     def goals_ratio_to_num_matches(self, team_id, num_matches=1):
     # {{{
-        """
-        Calculates (GS/GC) of specific team from goals scored and conceded in particular number of matches played before.
-        This feature should somehow aggregate information about team attack and defensive strength.
-        :param team_id: int:
-            Specifies particular team
-        :param num_matches: int:
-            Specifies particular number of matches from which the goals characteristics should be included.
-        :return: int:
-        """
         if type(num_matches) is not int or num_matches == 0:
             num_matches = 1
         # this is fastest selecting to compared with concat and append
@@ -666,22 +556,6 @@ class Data:
 
     def goals_ratio_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
     # {{{
-        """
-        Calculates (GS/GC) of specific team from goals scored and conceded in particular time period played before.
-        This feature should somehow aggregate information about team attack and defensive strength.
-        :param time_period_num: int:
-            Specifies particular number of time period (specified in param 'time_period_type') from which the goals
-            characteristics should be included.
-        :param time_period_type: str:
-            Possible values are: 'W' : week(fixed to 7 days)
-                                 'M' : month(fixed to 30 days)
-                                 'Y' : year(fixed to 365 days)
-                                 'S' : season(using self.SL_data)
-                                 'L' : life(using self.LL_data)
-        :param team_id: int:
-            Specifies particular team
-        :return: int:
-        """
         if time_period_type not in ['W', 'M', 'Y', 'S', 'L']:
             time_period_type = 'M'
         if type(time_period_num) is not int or time_period_num == 0:
@@ -727,15 +601,6 @@ class Data:
 
     def goals_to_match_ratio(self,ID, number_of_matches,MatchID=None, goal_type='scored'):
     # {{{
-        '''
-        Parametrs:
-            ID(int): ID of the team.
-            number_of_matches(int): Number of matches to evaluate.
-            MatchID(int): MatchID for the feature
-            goal_type(str): 'scored'/'conceded'(None)
-        Returns:
-            float: (scored / conceded) goals / # matches
-        '''
         team_matches = self.match_data.loc[ID]
         if not MatchID:
             last_number_of_matches = team_matches.tail(number_of_matches)
@@ -752,16 +617,6 @@ class Data:
 
     def goals_ratio(self, ID, oppo_ID, matches = 1, vs = False):
     # {{{
-        '''
-        Returns (goals_scored/(goals_scored  + goals_conceded)) of first team or this vs statistics
-        Parametrs:
-            oppo_ID(int): ID of the opponent.
-            ID(int): team id
-            matches(int): numbers of matches to past
-            vs(bool): set against each other
-        Returns:
-            float or 2 floats
-        '''
         matches_period =self.matches[(self.matches["HID"]==ID) | (self.matches["AID"]==ID)].sort_index()[-1-matches:-1]
         if vs:
             matches_period =matches_period[matches_period["HID"]==oppo_ID].append(matches_period[matches_period["AID"]==oppo_ID]).sort_index()[-1-matches:-1]
@@ -781,15 +636,6 @@ class Data:
 
     def wins_ratio(self, ID, months = None, matches=None):
     # {{{
-        '''
-        Returns wins in time or match period
-        Parameters:
-            ID(int): team id
-            months(int) = numbers of months
-            matches(int) = numbers of matches to past
-        Returns:
-            int
-        '''
         if months != None:
             months_period =self.matches[self.matches['Date'].isin(pd.date_range(end=self.today, periods=(months*30), freq='D')[::-1])]
             wins = np.nan
@@ -809,18 +655,6 @@ class Data:
 
     def home_advantage(self, ID, MatchID = None, method=None):
     # {{{
-        '''
-        Calculate the home advantage feature of the team. t.i. (# home_wins)/(# home_plays) - (#wins)/(#plays)
-        That is home_win_r - win_r. (The advantage of playing home against the total win rate).
-
-        Parameters:
-            MatchID(int/None): The `MatchID` to calculate the feature for. If `== None` than it counts all the matches that were recorded
-            method(str/None): (`'rate_surplus`/`'rate_ratio'`/None).
-                `'rate_surplus'` ->  `home_win_r - win_r`
-                `'rate_ratio'` -> `home_win_r / win_r`
-                `'None'` / `'rate'` -> `home_win_r`
-                `'all'` -> returns a tuple of (rate_surplus,rate_ratio,rate)
-        '''
         team_matches = self.match_data.loc[ID]
         team_matches_home = team_matches[team_matches.Home == 1]
         # if calculating with all the match IDs that are currently recorded
@@ -848,18 +682,6 @@ class Data:
 
     def away_disadvantage(self, ID, MatchID = None, method=None):
     # {{{
-        '''
-        Calculate the away disadvantage feature of the team. t.i. (# away_loses)/(# away_plays) - (# loses)/(#plays)`
-        That is away_lose_r - lose_r. (The advantage of playing home against the total win rate).
-
-        Parameters:
-            MatchID(int/None): The `MatchID` to calculate the feature for. If `== None` than it counts all the matches that were recorded
-            method(str/None): (`'rate_surplus`/`'rate_ratio'`/None).
-                `'rate_surplus'` ->  `away_lose_r - lose_r`
-                `'rate_ratio'` -> `away_lose_r / lose_r`
-                `'None'` / `'rate'` -> `away_lose_r`
-                `'all'` -> returns a tuple of (rate_surplus,rate_ratio,rate)
-        '''
         team_matches = self.match_data.loc[ID]
         team_matches_away = team_matches[team_matches.Away == 1]
         # if calculating with all the match IDs that are currently recorded
@@ -888,9 +710,6 @@ class Data:
 
     def elo_diff(self, MatchID):
     # {{{
-        '''
-        Returns the difference of the ELO ratings of the two teams playing in the match. (ELO_home - ELO_away)
-        '''
         return self.LL_data.loc[self.matches.loc[MatchID].HID].ELO_rating - self.LL_data.loc[self.matches.loc[MatchID].AID].ELO_rating
     # }}}
 
@@ -900,9 +719,6 @@ class Data:
 
     def _UPDATE_features(self):
     # {{{
-        '''
-        Updates the features in the attribute `self.features`
-        '''
         def update_for_match(row):
             MatchID = row.name
             match_date = self.matches.loc[MatchID].Date
@@ -999,9 +815,6 @@ class Data:
 
     def return_values(self):
     # {{{
-        '''
-        Return the values of the features in `self.today`
-        '''
         return self.features.loc[self.opps_matches]
     # }}}
 
@@ -1011,14 +824,6 @@ class Data:
 # using numba jit (AKA jit(nopython=False)): 102 ms ± 96.9 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
 def fast(pairs):
     # {{{
-    """
-    Calculates sum of vals for specific team present in first column of param pairs
-    :param pairs: np.ndarray:
-        every row contains team index and in second column of row is value e.g.
-        [[Team_ID, num_of_scored_goals] X (num_of_played_games * 2)]:
-        this can represent pairs of team:num_of_scored_goals: [[5, 2], [8, 3], [3, 4], [10, 4], [10, 3], [3, 8]]
-    :return:
-    """
     teams = np.unique(pairs[:, 0])
     out = np.zeros((teams.size, 2))
     for i, team in enumerate(teams):
@@ -1030,12 +835,6 @@ def fast(pairs):
 
 
 class PoissonRegression(object):
-    """
-    Class wraps basic time independent Poisson model based on predictions of outcome scores of match.
-    Number of goals which both teams will score in match are assumed to be independent random variables. This is not
-    true in reality. Models then  calculates parameters representing attack and defense strengths for each team and
-    model also includes home advantage parameter.
-    """
 
     def __init__(self, data, update_frequency=2, n_most_recent=4000, use_recency=False):
         self.goal_data = pd.DataFrame()
@@ -1049,33 +848,17 @@ class PoissonRegression(object):
         self.accuracy = pd.DataFrame()
 
     def _update_model(self):
-        """
-        Creates/updates time independent Poisson regression model based on actual goal data.
-        :return:
-            Returns fitted time independent poisson regression model.
-        """
 
         self.model = smf.glm(formula="goals ~ home + C(team) + C(opponent)", data=self.goal_data.iloc[-self.n_most_recent*2:],
                              family=sm.families.Poisson()).fit_regularized(L1_wt=0, alpha=0.01)
 
     def _update_teams(self, inc):
-        """
-        Updates set of teams already used to fit.
-        :param inc: pd.DataFrame:
-            Has to include 'HID', 'AID' columns,
-            but it is assumed to contain 'LID', 'H', 'D', 'A' ... columns as well.
-        """
         teams = self.goal_data[["team", "opponent"]]
         if self.use_recency:
             teams = teams.iloc[-self.n_most_recent*2:]
         self.teams = teams["team"].unique()
 
     def _update_goal_data(self, inc):
-        """
-        Updates 'self.goal_data' DataFrame based on new data contained in 'inc' parameter
-        :param inc: pd.DataFrame:
-            Has to include 'HID', 'AID', 'HSC', 'ASC' columns.
-        """
         new_data = pd.concat([inc[['HID', 'AID', 'HSC']].assign(home=1).rename(
             columns={'HID': 'team', 'AID': 'opponent', 'HSC': 'goals'}),
             inc[['AID', 'HID', 'ASC']].assign(home=0).rename(
@@ -1083,15 +866,6 @@ class PoissonRegression(object):
         self.goal_data = pd.concat([self.goal_data, new_data])
 
     def _simulate_match(self, match, max_goals=10):
-        """
-        Simulates match based on model and predicts probabilities of W/D/L for homeTeam(HID).
-        :param match: pd.Series (row of DataFrame):
-            Has to include 'HID', 'AID'
-        :param max_goals: int:
-            The maximum number of goals that we assume will occur.
-        :return: np.array:
-            [P(H), P(D), P(A)]
-        """
         home_goals_avg = self.model.predict(pd.DataFrame(data={'team': match["HID"],
                                                                'opponent': match["AID"], 'home': 1},
                                                          index=[1])).values[0]
@@ -1105,28 +879,11 @@ class PoissonRegression(object):
         return np.array([np.sum(np.tril(goals, -1)), np.sum(np.diag(goals)), np.sum(np.triu(goals, 1))])
 
     def _make_prediction(self, opps):
-        """
-        Predicts the probabilities of outcome [P(H), P(D), P(A)] of matches given in increment
-        :param opps: pd.DataFrame:
-            Has to contain 'HID', 'AID' column.
-        :return: pd.DataFrame:
-            One row of DataFrame looks like:
-                                    row([P(H), P(D), P(A)]) - if both teams in match was previously 'seen' in fit phase
-                                    row([0., 0., 0.]) - otherwise
-        """
         predictions = [np.array([0., 0., 0.]) if row["HID"] not in self.teams or row["AID"] not in self.teams else
                        self._simulate_match(row) for idx, row in opps.iterrows()]
         return pd.DataFrame(data=predictions, columns=["P(H)", "P(D)", "P(A)"], index=opps.index)
 
     def _eval_inc(self, inc):
-        """
-        Evaluates data increment:
-            1) Adds previously unknown teams to 'self.teams'
-            2) Updates 'self.goal_data'
-            3) Fit the model on new data in 'self.goal_data'
-        :param inc: pd.DataFrame:
-            Has to include 'HID', 'AID', 'HSC', 'ASC' columns.
-        """
         self._update_goal_data(inc)
         self._update_teams(inc)
         if self.last_update % self.update_frequency == 0:
@@ -1134,26 +891,12 @@ class PoissonRegression(object):
         self.last_update += 1
 
     def run_iter(self, inc, opps):
-        """
-        Runs the iteration of the evaluation loop.
-        :param inc: pd.DataFrame:
-            Has to include 'HID', 'AID', 'HSC', 'ASC' columns.
-        :param opps: pd.DataFrame:
-            Has to contain 'HID', 'AID' column.
-        :return: pd.DataFrame:
-            DataFrame containing accuracies for all predictions and overall accuracy
-        """
         self._eval_inc(inc)
         self.P_dis = self._make_prediction(opps)
         # self._evaluate_accuracy(opps)
         return self.accuracy
 
     def _evaluate_accuracy(self):
-        """
-        Calculates accuracy.
-        TODO calculate accuracy based on attributes stored in class Data in attribute self.data
-        :return:
-        """
         pass
 
 
@@ -1169,33 +912,15 @@ class Elo:
         return "Mean ELO: " + str(self.mean_elo) + "\n" + "K factor: " + str(self.k_factor) + "\n" + str(self.teams)
 
     def __eval_opps(self, opps):
-        '''
-        Evaluate betting opportunities:
-            1) Adds previously unknown teams to `self.teams`
-            2) Adds LIDs new for the teams to `self.teams`
-        '''
         self.__eval_new_teams(opps)
         self.__eval_new_LIDs(opps)
 
     def __eval_inc(self, inc):
-        '''
-        Evaluate data increment:
-            1) Adds previously unknown teams to `self.teams`
-            2) Adds LIDs new for the teams to `self.teams`
-            3) Evaluates the new ELOs for the teams
-        '''
         self.__eval_new_teams(inc)
         self.__eval_new_LIDs(inc)
         self.__eval_update_ELOs(inc)
 
     def __eval_new_teams(self, data_frame):
-        '''
-        New teams in `data_frame` to `self.teams` and associate `self.mean_elo` with them. (appends to `self.teams`)
-
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` to get new teams from (`inc` and `opps`).
-                                        Has to include 'HID' and 'AID'.
-        '''
         # FIXME: This could be done in one run through cating the 'HID' and the 'AID' cols <09-11-20, kunzaatko> #
         new_home_teams = data_frame[[home_team not in self.teams.index for home_team in data_frame['HID'].values]]
         new_away_teams = data_frame[[away_team not in self.teams.index for away_team in data_frame['AID'].values]]
@@ -1210,13 +935,6 @@ class Elo:
             self.teams = self.teams.append(pd.DataFrame(data={'LIDs': [[]], 'ELO': [self.mean_elo]}, index=[team]))
 
     def __eval_new_LIDs(self, data_frame):
-        '''
-        If team is playing in a league that it did not play before, associate the 'LID' with it. (mutates `self.teams['LIDs']`)
-
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` to get new LIDs from for the teams in `self.teams` (`inc` and `opps`).
-                                        Has to include 'HID', 'AID' and 'LID'.
-        '''
         for team in self.teams.index:
             # TODO: use pandas dataframe for this <10-11-20, kunzaatko> #
             LIDs = []
@@ -1234,26 +952,10 @@ class Elo:
                     self.teams.at[team, 'LIDs'].append(LID)
 
     def __eval_update_ELOs(self, data_frame):
-        '''
-        Updates the ELOs for based on the games recorded in the `data_frame`. (mutates `self.teams['ELO']`)
-
-        Parameters:
-        data_frame (pandas.DataFrame):  `data_frame` where the games played are recorded.
-                                        Has to include 'HID', 'AID', 'H', 'D' and 'A'.
-
-        '''
         for (HID, AID, H, D, A) in data_frame[['HID', 'AID', 'H', 'D', 'A']].values:
             self.__update_ELO(HID, AID, (H, D, A))
 
     def __update_ELO(self, HID, AID, result):
-        '''
-        Updates the ELO for one match. This is the function to change if we want to change the algorithm. (mutates `self.teams['ELO']` `HID` and `AID`)
-
-        Parameters:
-        HID(int): Home team ID
-        AID(int): Away team ID
-        result(list): [home_win(bool/int), draw(bool/int), away_win(bool/int)]. The options are mutually exclusive.
-        '''
 
         (home_win, _, away_win) = result
         [home_elo, away_elo] = [self.teams.at[ID, 'ELO'] for ID in [HID, AID]]
@@ -1267,32 +969,11 @@ class Elo:
             self.teams.at[AID, 'ELO'] += self.k_factor * (away_win - away_expected)
 
     def run_iter(self, inc, opps):
-        '''
-        Run the iteration of the evaluation loop.
-
-        Parameters:
-        inc(pandas.DataFrame):  'DataFrame' with the played matches.
-                                Has to include 'HID', 'AID', 'LID', 'H', 'D' and 'A'.
-        opps(pandas.DataFrame): 'DataFrame' with the betting opportunities.
-                                Has to include 'MatchID', 'HID' and 'AID'.
-        Returns:
-        pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
-        '''
         self.__eval_inc(inc)
         self.__eval_opps(opps)
         return self.P_dis_get(opps)
 
     def P_dis_get(self, data_frame):
-        '''
-        Calculate the probabilities based of match outcomes.
-
-        Parameters:
-        data_frame(pandas.DataFrame):   `data_frame` with matches. (`opps`).
-                                        Has to include 'MatchID', 'HID' and 'AID'
-
-        Returns:
-        pandas.DataFrame: 'DataFrame' loging the process of `P_dis_get` under this model.
-        '''
 
         log = pd.DataFrame()
 
@@ -1306,17 +987,6 @@ class Elo:
         return log
 
     def P_dis_match(self, MatchID, HID, AID):
-        '''
-        Calculate the probabitily of win lose draw of a match.
-
-        Parameters:
-        MatchID(int): The ID of the match. From the column 'MatchID' of the `data_frame`.
-        HID(int): The ID of the home team. From the column 'HID' of the `data_frame`.
-        AID(int): The ID of the home team. From the column 'AID' of the `data_frame`.
-
-        Returns:
-        pandas.DataFrame: 'DataFrame' with one row with the index `'MatchID'` and the associated outcome probabilities `'P(H)'`, `'P(D)'` and `'P(A)'`.
-        '''
 
         [home_elo, away_elo] = [self.teams.at[ID, 'ELO'] for ID in [HID, AID]]
 
@@ -1328,27 +998,6 @@ class Elo:
 
 class PredictiveModel(object):
     def __init__(self, data, classifier='rf', update_frequency=1, n_most_recent=2000, use_recency=False, debug=False):
-        """
-        :param data: Data()
-            Instance of class Data()
-        :param classifier: str:
-            Specifies the classifier used to predictions:
-                        'rf' - Random forest
-                        'ab' - Adaptive boosting
-                        'gb' - Gradient boosting
-                        'xgb' - XGBoost (Extreme gradient boosting)
-                        'gnb' - Gaussian NaiveBayes
-                        'knn' - K-nearest-neighbours
-                        'lr' - Logistic regression
-                        'vc' - Voting classifier
-        :param update_frequency: int:
-            Specifies how often to re-train model.
-        :param n_most_recent: int:
-            Specifies number of most recent matches which should be used to fit the model.
-            This approach should speed up whole learning process but set right value to this attribute will be essential
-        :param use_recency: bool:
-            Specifies if use self.n_most_recent attribute to speed up training
-        """
         self.data = data  # instance of class Data(), containing table which will be used as data to train
         self.clf = classifier  # specifies type of model
         self.update_frequency = update_frequency
@@ -1367,11 +1016,6 @@ class PredictiveModel(object):
         self.accuracy = pd.DataFrame()  # TODO implement me if needed
 
     def _predict(self, opps):
-        """
-        Makes prediction and result stores in self.P_dis
-        :param opps: pd.DataFrame:
-            DataFrame containing opportunities for betting
-        """
         # we need to transform dataframe opps to structure as variable 'features' below in method _update_model here
         # or already in class Data
 
@@ -1381,9 +1025,6 @@ class PredictiveModel(object):
         self.P_dis = pd.DataFrame(columns=['P(H)', 'P(D)', 'P(A)'], data=forecast, index=opps.index)
 
     def _update_model(self):
-        """
-        Re-train the model stored in self.predictive_model
-        """
 
         ##########################################
         #  HERE SET THE CLASSIFIER'S PARAMETERS  #
@@ -1553,15 +1194,6 @@ class PredictiveModel(object):
                 # xgb.plot_importance(self.predictive_model)  # this requires matplotlib
 
     def run_iter(self, inc, opps):
-        """
-        Runs the iteration of the evaluation loop.
-        :param inc: pd.DataFrame:
-            Has to include 'HID', 'AID', 'HSC', 'ASC' columns.
-        :param opps: pd.DataFrame:
-            Has to contain 'HID', 'AID' column.
-        :return: pd.DataFrame:
-            DataFrame containing accuracies for all predictions and overall accuracy
-        """
         if self.last_update % self.update_frequency == 0:
             self._update_model()
         self.last_update += 1
@@ -1570,9 +1202,6 @@ class PredictiveModel(object):
 
 
 class Bet_distribution:
-    '''
-    class for evaluating the distribution of the iteration Bankroll as bets in the betting opportunities.
-    '''
 
     def __init__(self, exp_profit_margin=1.05, max_bet=None):
         self.summary = None
@@ -1586,13 +1215,6 @@ class Bet_distribution:
         self.matches_already_bet = set()
 
     def eval_summary(self, summary):
-        '''
-        Update `self.summary`.
-
-        Parameters:
-            summary(pandas.DataFrame):  Summary of the current iteration. (from env)
-                                        Has to include 'Bankroll', 'Max_bet' and 'Min_bet'.
-        '''
         if self.max_bet is None:
             self.summary = {'Min_bet': summary.at[0, 'Min_bet'], 'Max_bet': summary.at[0, 'Max_bet'],
                             'Bankroll': summary.at[0, 'Bankroll']}
@@ -1601,38 +1223,13 @@ class Bet_distribution:
                             'Bankroll': summary.at[0, 'Bankroll']}
 
     def eval_opps(self, opps):
-        '''
-        Update `self.odds` and `self.bets`.
-
-        Parameters:
-            opps(pandas.DataFrame): Opportunities for bets. (from env)
-                                    Has to include 'OddsH','OddsD' and 'OddsA'.
-        '''
         self.odds = opps[['OddsH', 'OddsD', 'OddsA']].sort_index()
         self.bets = pd.DataFrame(data=np.zeros([len(opps), 3]), columns=['BetH', 'BetD', 'BetA'], index=self.odds.index)
 
     def eval_P_dis(self, P_dis):
-        '''
-        Update `self.P_dis`
-
-        Parameters:
-            P_dis(pandas.DataFrame):    P_dis from model.
-                                        Should include 'P(H)', 'P(D)' and 'P(A)'.
-        '''
         self.P_dis = P_dis.sort_index()
 
     def optimize(self, exp, opps):
-        """
-        Approach based on this work:
-        [https://www.researchgate.net/publication/277284931_Predicting_and_Retrospective_Analysis_of_Soccer_Matches_in_a_League]
-
-        :param exp: pd.DataFrame:
-            Containing expected profits while betting one unit
-        :param opps: pd.DataFrame:
-            Containing current opportunities for betting
-        :return: np.ndarray:
-            Matrix with same shape as opps containing optimal bets (some of them can be higher than 'Max_bet' and )
-        """
         exp_profit_matches = (exp["ExpH"] + exp["ExpD"] + exp["ExpA"]).to_numpy()  # E[profit for match]
         opp = opps.to_numpy()
         opt = []
@@ -1642,37 +1239,17 @@ class Bet_distribution:
         return np.stack(opt)
 
     def kelly_criterion(self, exp, opps):
-        """
-        Approach based on Kelly criterion.
-        :param exp: pd.DataFrame:
-            Containing expected profits while betting one unit
-        :param opps: pd.DataFrame:
-            Containing current opportunities for betting
-        :return: np.ndarray:
-            Matrix with same shape as opps containing optimal bets. Values means how much percent of bankroll to stake.
-        """
         kelly = (exp.to_numpy() - 1) / (opps.to_numpy() - 1)
         return np.where(kelly <= 0.0, 0.0,
                         kelly)  # negative values means non-positive expected profit so it is set to 0
 
     def eval_inc(self, inc):
-        """
-        Removes teams from self.matches_already_bet if present in current inc
-        :param inc: pd.DataFrame:
-            Current increment of data
-        """
         vals = inc.index.values.astype(int)
         for val in vals:
             if val in self.matches_already_bet:
                 self.matches_already_bet.remove(val)
 
     def update_bets(self):
-        '''
-        Place optimal bets based `self.P_dis` and `self.odds`.
-
-        Returns:
-        pd.DataFrame: log of the bet distibution process.
-        '''
         log = pd.DataFrame()
         # předpokládaný zisk na jeden vsazený kredit
         exp_profit = pd.DataFrame(data=(self.odds.to_numpy() * self.P_dis.to_numpy()), columns=["ExpH", "ExpD", "ExpA"],
@@ -1710,17 +1287,6 @@ class Bet_distribution:
         return log
 
     def run_iter(self, summary, opps, P_dis):
-        '''
-        The outermost API for Bet_distribution. Run bet_distribution on the iter.
-
-        Parameters:
-            summary(pandas.DataFrame):  Summary of the current iteration. (from env)
-                                        Has to include 'Bankroll', 'Max_bet' and 'Min_bet'.
-            opps(pandas.DataFrame): Opportunities for bets. (from env)
-                                    Has to include 'OddsH','OddsD' and 'OddsA'.
-            P_dis(pandas.DataFrame):    P_dis from model.
-                                        Should include 'P(H)', 'P(D)' and 'P(A)'.
-        '''
         self.eval_summary(summary)
         self.eval_opps(opps)
         self.eval_P_dis(P_dis)
@@ -1740,16 +1306,6 @@ model = PredictiveModel
 
 class Model:
     def __init__(self, model=model, model_params=params, log=True, bet_distribution = bet_distribution, bet_distribution_params={}):
-        '''
-        Initialization of the model class with the parameters we want to use for evaluation.
-
-        Parameters:
-        model(class): `class` that represents the model used. It has to include the attribute `model.P_dis` and has to have the method `model.run_iter(inc,opps)` that returns the log. It is read from the `model` local variable.
-        model_params(dict): A dictionary of params to pass to the `model`. It is read from the `model_params` local variable.
-        log(bool): Whether to log the process. If set to `false`, then `self.log` is `false`. Else is `self.log = (log_model, log_bet_distribution)`. Where` log_model` is the log that `model.run_iter(...)` returns and `bet_distribution.run_iter(...)` returns.
-        bet_distribution_params(dict): A dictionary of params to pass to the `bet_distribution`. It is read from the `bet_distribution_params` local variable.
-        '''
-
         self.data = Data()
         self.model = model(self.data, **model_params)
         self.bet_distribution = bet_distribution(**bet_distribution_params)
@@ -1757,20 +1313,6 @@ class Model:
 
 
     def place_bets(self, opps, summary, inc):
-        '''
-        The outermost API method for the evaluation loop. The evaluation loop relies on the avalibility of this method for the model class.
-
-        Parameters:
-        All the parameters are supplied by the evaluation loop.
-        opps(pandas.DataFrame): dataframe that includes the opportunities for betting.
-        summary(pandas.DataFrame): includes the `Max_bet`, `Min_bet` and `Bankroll`.
-        inc(pandas.DataFrame): includes the played matches with the scores for the model.
-
-        Returns:
-        pandas.DataFrame: With the bets that we want to place. Indexed by the teams `ID`.
-        '''
-
-
         self.data.update_data(opps=opps,summary=summary, inc=inc)
 
         # all features must be updated before model training

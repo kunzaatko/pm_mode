@@ -1327,7 +1327,8 @@ class Elo:
 
 
 class PredictiveModel(object):
-    def __init__(self, data, classifier=RandomForestClassifier(), update_frequency=1, n_most_recent=2000, use_recency=False, debug=False):
+    def __init__(self, data, classifier=RandomForestClassifier(), update_frequency=1, n_most_recent=2000,
+                 use_recency=False, use_calibration=True, debug=False):
         """
         :param data: Data()
             Instance of class Data()
@@ -1348,7 +1349,7 @@ class PredictiveModel(object):
         self.last_update = 0
         self.debug = debug
 
-        self.clf = classifier  # specifies type of model
+        self.clf = CalibratedClassifierCV(base_estimator=classifier, cv=5, method='sigmoid') if use_calibration else classifier
         self.imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
         self.scaler = MinMaxScaler(feature_range=(0, 1), copy=True)  # scales cols of features between 0-1 (we can use
         # normalizer to normalize each row (input vector to one) instead.)
@@ -1722,7 +1723,8 @@ logistic_regression = LogisticRegression(penalty='l2',
 
 
 bet_distribution = Bet_distribution
-params = {'use_recency': True, 'n_most_recent': 2000, 'classifier': logistic_regression, 'update_frequency': 1, 'debug': False}
+params = {'use_recency': True, 'n_most_recent': 2000, 'classifier': knn, 'update_frequency': 1, 'debug': False,
+          'use_calibration': True}
 model = PredictiveModel
 
 

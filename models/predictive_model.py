@@ -11,6 +11,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler, Normalizer, OneHotEncoder
+from sklearn.metrics import confusion_matrix, classification_report, plot_confusion_matrix
+import matplotlib.pyplot as plt
 
 
 class PredictiveModel(object):
@@ -107,6 +109,20 @@ class PredictiveModel(object):
 
                 # TODO try me as well
                 # xgb.plot_importance(self.predictive_model)  # this requires matplotlib
+
+    def test_me(self, test_features, test_labels):
+        test_features = test_features.to_numpy()
+        test_labels = test_labels.to_numpy()
+        print(f"{self.clf.__class__.__name__} test accuracy: "
+              f"{self.pipeline.score(test_features, np.argmax(test_labels, axis=1))}")
+        print(f'classification report (test set): \n'
+              f'{classification_report(np.argmax(test_labels, axis=1), np.argmax(self.P_dis.to_numpy(), axis=1), target_names=["H", "D", "A"], zero_division=0)}')
+        plot_confusion_matrix(self.pipeline, test_features, np.argmax(test_labels, axis=1), display_labels=["H", "D", "A"])
+        plt.show()
+        cm = confusion_matrix(np.argmax(test_labels, axis=1), np.argmax(self.P_dis.to_numpy(), axis=1),
+                              labels=[0, 1, 2])
+        print(f'Confusion matrix (test set): \n'
+              f'{cm}')
 
     def run_iter(self, inc, opps):
         """

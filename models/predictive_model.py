@@ -38,11 +38,14 @@ class PredictiveModel(object):
         self.last_update = 0
         self.debug = debug
 
-        self.clf = CalibratedClassifierCV(base_estimator=classifier, cv=5, method='sigmoid') if use_calibration else classifier
+        self.clf = CalibratedClassifierCV(base_estimator=classifier, cv=5,
+                                          method='sigmoid') if use_calibration else classifier
         self.imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
         self.scaler = MinMaxScaler(feature_range=(0, 1), copy=True)  # scales cols of features between 0-1 (we can use
         # normalizer to normalize each row (input vector to one) instead.)
-        self.pipeline = None  # HERE IS THE HEARTH OF MODEL (FITTED MODEL)
+        self.pipeline = self.pipeline = Pipeline(
+            steps=[('imputer', self.imputer), ('scaler', self.scaler),
+                   ('classifier', self.clf)])  # HERE IS THE HEARTH OF MODEL (FITTED MODEL)
 
         self.P_dis = None
         self.accuracy = pd.DataFrame()  # TODO implement me if needed
@@ -69,8 +72,6 @@ class PredictiveModel(object):
         ##################
         # FIT THE MODEL  #
         ##################
-        # It is assumed that in class Data() exist dataframe containing final data
-        # HID, AID needs to be one-hot encoded or not used
         features = self.data.features.loc[:(self.data.opps_matches[0] - 1)].copy()
         labels = self.data.matches.loc[:(self.data.opps_matches[0] - 1), ['H', 'D', 'A']].copy()
 
@@ -81,9 +82,6 @@ class PredictiveModel(object):
         features = features.to_numpy()
         labels = labels.to_numpy()
 
-        self.pipeline = Pipeline(
-            steps=[('imputer', self.imputer), ('scaler', self.scaler), ('classifier', self.clf)])
-
         self.pipeline.fit(features, np.argmax(labels, axis=1))  # H has index 0, D has index 1, A has index 2
 
         ##################
@@ -93,14 +91,14 @@ class PredictiveModel(object):
             print(f"{self.clf.__class__.__name__} train accuracy: "
                   f"{self.pipeline.score(features, np.argmax(labels, axis=1))}")
 
-            if hasattr(self.clf, 'feature_importances_'):  # FEATURES IMPORTANCES works only for tree based algorithms !!!
+            if hasattr(self.clf,
+                       'feature_importances_'):  # FEATURES IMPORTANCES works only for tree based algorithms !!!
                 # FEATURES IMPORTANCES # Warning: impurity-based feature importances can be misleading for high
                 # cardinality features (many unique values). See sklearn.inspection.permutation_importance as an
                 # alternative.
                 feature_importances = self.clf.feature_importances_  # this will work only if
-                                                                                  # booster = gbtree !!!
-                std = np.std([tree.feature_importances_ for tree in self.clf.estimators_],
-                             axis=0)
+                # booster = gbtree !!!
+
                 indices = np.argsort(feature_importances)[::-1]
                 # Print the feature ranking
                 print("Feature ranking based on feature_importances (MDI):")
@@ -117,12 +115,38 @@ class PredictiveModel(object):
               f"{self.pipeline.score(test_features, np.argmax(test_labels, axis=1))}")
         print(f'classification report (test set): \n'
               f'{classification_report(np.argmax(test_labels, axis=1), np.argmax(self.P_dis.to_numpy(), axis=1), target_names=["H", "D", "A"], zero_division=0)}')
-        plot_confusion_matrix(self.pipeline, test_features, np.argmax(test_labels, axis=1), display_labels=["H", "D", "A"])
-        plt.show()
+        # plot_confusion_matrix(self.pipeline, test_features, np.argmax(test_labels, axis=1), display_labels=["H", "D", "A"])
+        # plt.show()
         cm = confusion_matrix(np.argmax(test_labels, axis=1), np.argmax(self.P_dis.to_numpy(), axis=1),
                               labels=[0, 1, 2])
         print(f'Confusion matrix (test set): \n'
               f'{cm}')
+
+    def tune_me(self, test_features, test_labels, hyperparams, type='rand'):
+        """
+        Applies cross-validation to find the best parameters
+        :param test_features: pd.DataFrame:
+        :param test_labels: pd.DataFrame:
+        :param hyperparams: dict:
+            Contains parameters which needs to be tested.
+        :param type: str:
+            Specifies if use gridsearch - ('grid') [tries all combinations specified in grid]
+                             randomsearch - ('rand') [tries randomly possible values of parameters within given ranges]
+
+        """
+
+        grid = dict([('classifier__base_estimator__' + key, val) for key, val in hyperparams.items()]) if \
+            self.clf.__class__.__name__ == 'CalibratedClassifierCV' else \
+            dict([('classifier__' + key, val) for key, val in hyperparams.items()])
+        test_features = test_features.to_numpy()
+        test_labels = test_labels.to_numpy()
+
+        search = GridSearchCV(self.pipeline, grid, cv=10, n_jobs=5) if type == 'grid' else \
+            RandomizedSearchCV(self.pipeline, grid, cv=10, n_iter=50, n_jobs=5)
+        print("Looking for best hyper-parameters settings...")
+        search.fit(test_features, np.argmax(test_labels, axis=1))
+        print("Best parameter (CV score=%0.3f):" % search.best_score_)
+        print(search.best_params_)
 
     def run_iter(self, inc, opps):
         """

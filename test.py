@@ -15,6 +15,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler, Normalizer, OneHotEncoder
 
+
 class Data:
     '''
     Class for manipulating the data and extracting characteristics.
@@ -26,8 +27,8 @@ class Data:
 
     # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
-    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, LL_data = True):
-    # {{{
+    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, LL_data=True):
+        # {{{
         '''
         Parameters:
             sort_columns(True): Sort the columns of the dataframes
@@ -41,9 +42,9 @@ class Data:
         #  private attributes  #
         ########################
         self._sort_columns = sort_columns
-        self._curr_inc_teams = None # teams that are in inc
-        self._curr_opps_teams = None # teams that are in opps
-        self._matches_not_registered_to_features = None # matches, that were not yet counted into team features
+        self._curr_inc_teams = None  # teams that are in inc
+        self._curr_opps_teams = None  # teams that are in opps
+        self._matches_not_registered_to_features = None  # matches, that were not yet counted into team features
 
         if 'ELO_rating' in optional_data_cols:
             self.ELO_rating = True
@@ -55,9 +56,9 @@ class Data:
         ########################
         #  Storage attributes  #
         ########################
-        self.yesterday = None # this is used for initialization in very first inc of data and then as reference to yesterday
-        self.today = None # current date
-        self.bankroll = None # current bankroll
+        self.yesterday = None  # this is used for initialization in very first inc of data and then as reference to yesterday
+        self.today = None  # current date
+        self.bankroll = None  # current bankroll
         self.opps_matches = None
 
         ##########################
@@ -74,9 +75,14 @@ class Data:
         #           | 'P(H)'               | 'P(D)'           | 'P(A)'               | 'BetH'       | 'BetD'   | 'BetA'
         #           | model prob. home win | model prob. draw | model prob. away win | bet home win | bet draw | bet away win
 
-        types = {'Date':'datetime64[ns]', 'Open':'datetime64[ns]', 'Sea':'int16','HID':'int16','AID':'int16','OddsH':'float64','OddsD':'float64','OddsA':'float64','HSC':'int16','ASC':'int16','H':'int64','D':'int64','A':'int64','P(H)':'float64','P(D)':'float64','P(A)':'float64','BetH':'float64','BetD':'float64','BetA':'float64'}
-        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']).astype(types, copy=False) # All matches played by IDs ﭾ
-
+        types = {'Date': 'datetime64[ns]', 'Open': 'datetime64[ns]', 'Sea': 'int16', 'HID': 'int16', 'AID': 'int16',
+                 'OddsH': 'float64', 'OddsD': 'float64', 'OddsA': 'float64', 'HSC': 'int16', 'ASC': 'int16',
+                 'H': 'int64', 'D': 'int64', 'A': 'int64', 'P(H)': 'float64', 'P(D)': 'float64', 'P(A)': 'float64',
+                 'BetH': 'float64', 'BetD': 'float64', 'BetA': 'float64'}
+        self.matches = pd.DataFrame(
+            columns=['opps_Date', 'Sea', 'Date', 'Open', 'LID', 'HID', 'AID', 'HSC', 'ASC', 'H', 'D', 'A', 'OddsH',
+                     'OddsD', 'OddsA', 'P(H)', 'P(D)', 'P(A)', 'BetH', 'BetD', 'BetA']).astype(types,
+                                                                                               copy=False)  # All matches played by IDs ﭾ
 
         #########################
         #  Features attributes  #
@@ -88,7 +94,9 @@ class Data:
         # team ID || league ID (list) | goals scored      | goals conceded      | wins      | draws      | loses
         #          | 'LL_Played'    | 'LL_Accu'
         #          | played matches | model accuracy
-        self.LL_data = pd.DataFrame(columns=['LID','LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']) # recorded teams
+        self.LL_data = pd.DataFrame(
+            columns=['LID', 'LL_Goals_Scored', 'LL_Goals_Conceded', 'LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played',
+                     'LL_Accu'])  # recorded teams
 
         if self.ELO_rating:
             self.LL_data['ELO_rating'] = np.nan
@@ -99,27 +107,33 @@ class Data:
         # season,team ID    || league ID (list) | goals scored      | goals conceded      | wins      | draws      | loses
         #                    | 'SL_Played'    | 'SL_Accu'
         #                    | played matches | model accuracy
-        self.SL_data = pd.DataFrame(columns=['LID','SL_Goals_Scored', 'SL_Goals_Conceded', 'SL_Wins', 'SL_Draws', 'SL_Loses', 'SL_Played', 'SL_Accu']) # data frame for storing all the time characteristics for seasons
-
+        self.SL_data = pd.DataFrame(
+            columns=['LID', 'SL_Goals_Scored', 'SL_Goals_Conceded', 'SL_Wins', 'SL_Draws', 'SL_Loses', 'SL_Played',
+                     'SL_Accu'])  # data frame for storing all the time characteristics for seasons
 
         # `self.match_data`
         # index   || 'MatchID' | 'Sea'  | 'Date'       | 'Oppo'      | 'Home'       | 'Away'       | 'M_Goals_Scored' | 'M_Goals_Conceded'
         # team ID || match ID  | season | date of play | opponent id | team is home | team is away | goals scored     | goals conceded
         #          | 'M_Win'   | 'M_Draw'  | 'M_Lose'   | 'M_P(Win)'      | 'M_P(Draw)'      | 'M_P(Lose)'      | 'M_Accu'
         #          | match win | match draw| match lose | model prob. win | model prob. draw | model prob. lose | model accuracy
-        self.match_data = pd.DataFrame(columns=['MatchID', 'Date' , 'Oppo', 'Home', 'Away',  'M_Goals_Scored', 'M_Goals_Conceded', 'M_Win','M_Draw', 'M_Lose','M_P(Win)','M_P(Draw)', 'M_P(Lose)','M_Accu'])
+        self.match_data = pd.DataFrame(
+            columns=['MatchID', 'Date', 'Oppo', 'Home', 'Away', 'M_Goals_Scored', 'M_Goals_Conceded', 'M_Win', 'M_Draw',
+                     'M_Lose', 'M_P(Win)', 'M_P(Draw)', 'M_P(Lose)', 'M_Accu'])
 
         # `self.features`
         # index || 'H_GS_GC_diff_#5'|'A_GS_GC_diff_#5' | 'H_GS_#' | 'A_GS_#' | 'H_GC_#' | 'A_GC_#' | 'H_WR_#' | 'A_WR_#' | 'H_DR_#' | 'A_DR_#' | 'H_LR_#' | 'A_Lr_#' |
         # MatchID || goals scored - goals conceded in last 15 matches for home team | goals scored - goals conceded difference in last 15 matches for away team | home goals scored in last # matches | away goals scored in last # matches | home win rate in last # matches | away lose rate in last # matches | home draw rate in last # matches | away draw rate in last # matches | home lose rate in last # matches | away lose rate in last # matches |
-        self.features = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'])
+        self.features = pd.DataFrame(
+            columns=['H_GS_GC_diff_#15', 'A_GS_GC_diff_#15', 'H_GS_#', 'A_GS_#', 'H_GC_#', 'A_GC_#', 'H_WR_#', 'A_WR_#',
+                     'H_DR_#', 'A_DR_#', 'H_LR_#', 'A_LR_#'])
+
     # }}}
 
     ######################################
     #  UPDATING THE DATA STORED IN SELF  #
     ######################################
 
-    def update_data(self, opps=None ,summary=None, inc=None, P_dis=None, bets=None):
+    def update_data(self, opps=None, summary=None, inc=None, P_dis=None, bets=None):
         # {{{
         '''
         Run the iteration update of the data stored.
@@ -137,13 +151,17 @@ class Data:
         if inc is not None:
             if self.today in inc['Date'].values:
                 print(all(pd.isna(inc.groupby('Date').get_group(self.today))))
-            inc = inc.loc[:,~inc.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
-            self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
+            inc = inc.loc[:, ~inc.columns.str.match(
+                'Unnamed')]  # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
+            self._curr_inc_teams = np.unique(
+                np.concatenate((inc['HID'].to_numpy(dtype='int64'), inc['AID'].to_numpy(dtype='int64'))))
             self._EVAL_inc(inc)
 
         if opps is not None:
-            opps = opps.loc[:,~opps.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
-            self._curr_opps_teams = np.unique(np.concatenate((opps['HID'].to_numpy(dtype='int64'),opps['AID'].to_numpy(dtype='int64'))))
+            opps = opps.loc[:, ~opps.columns.str.match(
+                'Unnamed')]  # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
+            self._curr_opps_teams = np.unique(
+                np.concatenate((opps['HID'].to_numpy(dtype='int64'), opps['AID'].to_numpy(dtype='int64'))))
             opps['opps_Date'] = self.today
             self._EVAL_opps(opps)
 
@@ -154,61 +172,71 @@ class Data:
             self._EVAL_bets(bets)
 
         if self._sort_columns:
-            self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
+            self.matches = self.matches[
+                ['opps_Date', 'Sea', 'Date', 'Open', 'LID', 'HID', 'AID', 'HSC', 'ASC', 'H', 'D', 'A', 'OddsH', 'OddsD',
+                 'OddsA', 'P(H)', 'P(D)', 'P(A)', 'BetH', 'BetD', 'BetA']]
             if self.ELO_rating:
-                self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu','ELO_rating']]
+                self.LL_data = self.LL_data[
+                    ['LID', 'LL_Goals_Scored', 'LL_Goals_Conceded', 'LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played',
+                     'LL_Accu', 'ELO_rating']]
             else:
-                self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']]
+                self.LL_data = self.LL_data[
+                    ['LID', 'LL_Goals_Scored', 'LL_Goals_Conceded', 'LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played',
+                     'LL_Accu']]
 
         # }}}
 
     def _EVAL_summary(self, summary):
         # {{{
         self.today = summary['Date'][0]
-        self.yesterday = self.today - pd.DateOffset(1) # -> We do not have to worry about self.yesterday being None anymore
+        self.yesterday = self.today - pd.DateOffset(
+            1)  # -> We do not have to worry about self.yesterday being None anymore
         self.bankroll = summary['Bankroll'][0]
         # }}}
 
     def _EVAL_inc(self, inc):
         # {{{
         self._eval_teams(inc, self._curr_inc_teams)
-        self._eval_matches(inc,update_columns=['HSC','ASC','H','D','A'])
+        self._eval_matches(inc, update_columns=['HSC', 'ASC', 'H', 'D', 'A'])
 
         if self.ELO_rating:
             self._eval_inc_update_ELO(inc)
         # }}}
 
     def _eval_inc_update_ELO(self, inc):
-    # {{{
+        # {{{
         '''
         Update the ELO ratings for the new incremented data.
         '''
+
         def elo_for_one_team(row):
-            Home_ID,Away_ID,Home_win,_,Away_win = row.HID,row.AID,row.H,row.D,row.A
-            [Home_elo, Away_elo] = [self.LL_data.at[ID,'ELO_rating'] for ID in [Home_ID,Away_ID]]
-            [Home_expected, Away_expected] = [1/(1+10**((elo_1 - elo_2) / 400)) for (elo_1, elo_2) in [(Away_elo, Home_elo), (Home_elo, Away_elo)]]
-            if any([Home_win,Away_win]):
+            Home_ID, Away_ID, Home_win, _, Away_win = row.HID, row.AID, row.H, row.D, row.A
+            [Home_elo, Away_elo] = [self.LL_data.at[ID, 'ELO_rating'] for ID in [Home_ID, Away_ID]]
+            [Home_expected, Away_expected] = [1 / (1 + 10 ** ((elo_1 - elo_2) / 400)) for (elo_1, elo_2) in
+                                              [(Away_elo, Home_elo), (Home_elo, Away_elo)]]
+            if any([Home_win, Away_win]):
                 self.LL_data.at[Home_ID, 'ELO_rating'] += self.ELO_k_factor * (Home_win - Home_expected)
                 self.LL_data.at[Away_ID, 'ELO_rating'] += self.ELO_k_factor * (Away_win - Away_expected)
 
-        inc.apply(elo_for_one_team,axis=1)
+        inc.apply(elo_for_one_team, axis=1)
+
     # }}}
 
     def _EVAL_opps(self, opps):
         # {{{
         self.opps_matches = opps.index.to_numpy()
         self._eval_teams(opps, self._curr_inc_teams)
-        self._eval_matches(opps, update_columns=['Sea','Date','LID','HID','AID','Open','OddsH','OddsA','OddsD'])
+        self._eval_matches(opps, update_columns=['Sea', 'Date', 'LID', 'HID', 'AID', 'Open', 'OddsH', 'OddsA', 'OddsD'])
         # }}}
 
     def _EVAL_P_dis(self, P_dis):
         # {{{
-        self._eval_matches(P_dis,update_columns=['P(H)', 'P(D)', 'P(A)'])
+        self._eval_matches(P_dis, update_columns=['P(H)', 'P(D)', 'P(A)'])
         # }}}
 
     def _EVAL_bets(self, bets):
         # {{{
-        self._eval_matches(bets,update_columns=['BetH','BetD','BetA'])
+        self._eval_matches(bets, update_columns=['BetH', 'BetD', 'BetA'])
         # }}}
 
     def _eval_teams(self, data_frame, data_frame_teams):
@@ -227,13 +255,16 @@ class Data:
             # teams in the data_frame that are not stored in the self.LL_data
             index_new_teams = np.setdiff1d(index_data_frame, index_self_teams)
 
-            if not len(index_new_teams) == 0: # if there are any new teams (otherwise invalid indexing)
+            if not len(index_new_teams) == 0:  # if there are any new teams (otherwise invalid indexing)
                 # DataFrame of new teams
                 new_teams = pd.DataFrame(index=index_new_teams)
-                lids_frame = pd.concat((data_frame[['HID','LID']].set_index('HID'),data_frame[['AID','LID']].set_index('AID'))) # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> # NOTE: This is probably working only because the inc already added some teams.
+                lids_frame = pd.concat((data_frame[['HID', 'LID']].set_index('HID'),
+                                        data_frame[['AID', 'LID']].set_index(
+                                            'AID')))  # TODO: This will not work if there are multiple LIDs for one team in one inc <15-11-20, kunzaatko> # NOTE: This is probably working only because the inc already added some teams.
                 lids = lids_frame[~lids_frame.index.duplicated(keep='first')].loc[index_new_teams]
                 # Making a list from the 'LID's
-                new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]), axis=1) # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+                new_teams['LID'] = lids.apply(lambda row: np.array([row.LID]),
+                                              axis=1)  # this is costly but is only run once for each match %timeit dataset['LID'] = dataset.apply(lambda row: [row.LID], axis=1) -> 463 ms ± 13.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
                 if self.ELO_rating:
                     new_teams['ELO_rating'] = self.ELO_mean_ELO
                 self.LL_data = pd.concat((self.LL_data, new_teams))
@@ -246,38 +277,43 @@ class Data:
             # NOTE: This could be optimised radically but it has shown to be a pain in the ass so this is it. If there will be a 'TLE' (time limit exceeded) error, this is the place to change <15-11-20, kunzaatko> #
 
             # teams in the data_frame that are stored in the self.LL_data (teams that could have been changed)
-            index_old_teams = np.intersect1d(index_self_teams,index_data_frame)
+            index_old_teams = np.intersect1d(index_self_teams, index_data_frame)
             index_old_teams_HID = np.intersect1d(index_old_teams, data_frame['HID'].to_numpy(dtype='int64'))
             index_old_teams_AID = np.intersect1d(index_old_teams, data_frame['AID'].to_numpy(dtype='int64'))
 
             for index in index_old_teams_HID:
                 if not type(data_frame.set_index('HID').loc[index]) == pd.DataFrame:
-                    if not data_frame.set_index('HID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+                    if not data_frame.set_index('HID').loc[index]['LID'] in self.LL_data.at[index, 'LID']:
+                        self.LL_data.at[index, 'LID'] = np.append(self.LL_data.at[index, 'LID'],
+                                                                  data_frame.set_index('HID').at[index, 'LID'])
                 else:
-                    if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+                    if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.LL_data.at[index, 'LID']:
+                        self.LL_data.at[index, 'LID'] = np.append(self.LL_data.at[index, 'LID'],
+                                                                  data_frame.set_index('HID').at[index, 'LID'])
 
             for index in index_old_teams_AID:
                 if not type(data_frame.set_index('AID').loc[index]) == pd.DataFrame:
-                    if not data_frame.set_index('AID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+                    if not data_frame.set_index('AID').loc[index]['LID'] in self.LL_data.at[index, 'LID']:
+                        self.LL_data.at[index, 'LID'] = np.append(self.LL_data.at[index, 'LID'],
+                                                                  data_frame.set_index('AID').at[index, 'LID'])
                 else:
-                    if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+                    if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.LL_data.at[index, 'LID']:
+                        self.LL_data.at[index, 'LID'] = np.append(self.LL_data.at[index, 'LID'],
+                                                                  data_frame.set_index('AID').at[index, 'LID'])
 
             # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
 
     # TODO: Probably does not work correctly for the bets. The bets should not be combined for the `opps` and the `inc` but only for the `bets` dataframe. <17-11-20, kunzaatko> #
     # TODO: the 'opps_Date' is not working. The indexes should not be concatenated but appended for new matches if they do not have the same 'opps_Date'... (When they are not added on the same day) <17-11-20, kunzaatko> # -> the problem with this is though that we would have to groupby matchid to to access a match, and multiple MatchIDs would be the same in the dataframe -> We should consider adding a new frame with this data (or maybe the bets should be recorded as an associated series of the match... What is your oppinion/solution?
-    def _eval_matches(self, data_frame,update_columns=[]):
+    def _eval_matches(self, data_frame, update_columns=[]):
         # {{{
         # !!! this changes the dtypes and therefore runs slowly (as per https://github.com/pandas-dev/pandas/issues/28613)
         # self.matches = self.matches.combine_first(data_frame)
 
-        old_matches = np.intersect1d(data_frame.index.to_numpy(dtype='int32'),self.matches.index.to_numpy(dtype='int32'))
+        old_matches = np.intersect1d(data_frame.index.to_numpy(dtype='int32'),
+                                     self.matches.index.to_numpy(dtype='int32'))
         self.matches.update(data_frame[update_columns].loc[old_matches])
-        new_matches = np.setdiff1d(data_frame.index.to_numpy(dtype='int32'),old_matches)
+        new_matches = np.setdiff1d(data_frame.index.to_numpy(dtype='int32'), old_matches)
         # if there are no such indices, then append whole frame
         self.matches = self.matches.append(data_frame.loc[new_matches]).sort_index()
         # }}}
@@ -287,35 +323,38 @@ class Data:
         #####################################################################
 
     def update_features(self):
-    # {{{
+        # {{{
         '''
         Update the features for the data stored in `self`.
         '''
         self._UPDATE_LL_data_features()
-        #self._UPDATE_SL_data_features()
+        # self._UPDATE_SL_data_features()
         self._UPDATE_match_data_features()
         self._UPDATE_features()
+
     # }}}
 
     def _UPDATE_LL_data_features(self):
-    # {{{
+        # {{{
         '''
         Populate all the features from the frame `self.LL_data`
         '''
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
-            else None
-        matches_played_today = self.matches.groupby('Date').get_group(self.today) if self.today in self.matches['Date'].to_numpy() \
                 else None
+        matches_played_today = self.matches.groupby('Date').get_group(self.today) if self.today in self.matches[
+            'Date'].to_numpy() \
+            else None
 
         self._update_LL_Played(matches_played_before)
         self._update_LL_Goals(matches_played_before)
         self._update_LL_Res(matches_played_before)
         self._update_LL_Accu(matches_played_before)
+
     # }}}
 
     def _update_LL_Played(self, matches_played):
-    # {{{
+        # {{{
         '''
         Update 'LL_Played' (games) of the fram self.LL_data
         :param matches_played: pd.Dataframe:
@@ -323,13 +362,15 @@ class Data:
         '''
         if matches_played is not None:
             teams_played = np.unique(np.concatenate((matches_played['HID'].to_numpy(dtype='int64'),
-                                                     matches_played['AID'].to_numpy(dtype='int64'))), return_counts=True)
+                                                     matches_played['AID'].to_numpy(dtype='int64'))),
+                                     return_counts=True)
             self.LL_data.loc[teams_played[0], 'LL_Played'] = self.LL_data.loc[teams_played[0], 'LL_Played'] + \
                                                              teams_played[1]
+
     # }}}
 
     def _update_LL_Goals(self, matches_played):
-    # {{{
+        # {{{
         '''
         Update 'LL_Goals_Scored' and 'LL_Goals_Conceded' of the frame `self.LL_data`
         '''
@@ -345,20 +386,21 @@ class Data:
                 self.LL_data.loc[scored[:, 0], 'LL_Goals_Scored'] + scored[:, 1]
             self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] = \
                 self.LL_data.loc[conceded[:, 0], 'LL_Goals_Conceded'] + conceded[:, 1]
+
     # }}}
 
     def _update_LL_Res(self, matches_played):
-    # {{{
+        # {{{
         '''
         Update 'LL_Wins', 'LL_Draws' and 'LL_Loses' of the frame `self.LL_data`
         '''
         if matches_played is not None:
             teams_wins = np.concatenate([matches_played[['HID', 'H']].to_numpy(dtype='int64'),
-                                                 matches_played[['AID', 'A']].to_numpy(dtype='int64')])
+                                         matches_played[['AID', 'A']].to_numpy(dtype='int64')])
             teams_loses = np.concatenate([matches_played[['HID', 'A']].to_numpy(dtype='int64'),
-                                                   matches_played[['AID', 'H']].to_numpy(dtype='int64')])
+                                          matches_played[['AID', 'H']].to_numpy(dtype='int64')])
             teams_draws = np.concatenate([matches_played[['HID', 'D']].to_numpy(dtype='int64'),
-                                                   matches_played[['AID', 'D']].to_numpy(dtype='int64')])
+                                          matches_played[['AID', 'D']].to_numpy(dtype='int64')])
 
             wins = fast(teams_wins)
             loses = fast(teams_loses)
@@ -367,19 +409,21 @@ class Data:
             self.LL_data.loc[wins[:, 0], 'LL_Wins'] = self.LL_data.loc[wins[:, 0], 'LL_Wins'] + wins[:, 1]
             self.LL_data.loc[loses[:, 0], 'LL_Loses'] = self.LL_data.loc[loses[:, 0], 'LL_Loses'] + loses[:, 1]
             self.LL_data.loc[draws[:, 0], 'LL_Draws'] = self.LL_data.loc[draws[:, 0], 'LL_Draws'] + draws[:, 1]
+
     # }}}
 
     def _update_LL_Accu(self, matches_played):
-    # {{{
+        # {{{
         '''
         Update 'LL_Accu' of the frame `self.LL_data`
         '''
         if matches_played is not None:
             pass
+
     # }}}
 
     def _UPDATE_SL_data_features(self):
-    # {{{
+        # {{{
         '''
         Populate all the features of `self.SL_data`
         '''
@@ -387,17 +431,18 @@ class Data:
         # TODO I assume that 'self.SL_data' are updated when new team will be present in 'inc' (Many98)
         matches_played_before = self.matches[self.matches['Date'] < self.today] if self.yesterday is None else \
             self.matches.groupby('Date').get_group(self.yesterday) if self.yesterday in self.matches['Date'].to_numpy() \
-            else None
+                else None
 
         self._update_SL_Goals(matches_played_before)
         self._update_SL_Res(matches_played_before)
         self._update_SL_Played(matches_played_before)
         self._update_SL_Accu(matches_played_before)
+
     # }}}
 
     # TODO: Could be unified with `_update_LL_Goals` as `_update_Goals` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Goals(self, matches_played):
-    # {{{
+        # {{{
         '''
         Update 'SL_Goals_Scored' and 'SL_Goals_Conceded' of the frame `self.SL_data`
         '''
@@ -419,11 +464,12 @@ class Data:
                     self.SL_data.loc[ind_gs, 'SL_Goals_Scored'] + scored[:, 1]
                 self.SL_data.loc[ind_gc, 'SL_Goals_Conceded'] = \
                     self.SL_data.loc[ind_gc, 'SL_Goals_Conceded'] + conceded[:, 1]
+
     # }}}
 
     # TODO: Could be unified with `_update_LL_Res` as `_update_Res` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Res(self, matches_played):
-    # {{{
+        # {{{
         if matches_played is not None:
             seasons = [season for season in matches_played.groupby('Sea')]
             for sea, season in seasons:
@@ -448,11 +494,12 @@ class Data:
                     self.SL_data.loc[ind_loses, 'SL_Loses'] + loses[:, 1]
                 self.SL_data.loc[ind_draws, 'SL_Draws'] = \
                     self.SL_data.loc[ind_draws, 'SL_Draws'] + draws[:, 1]
+
     # }}}
 
     # TODO: Could be unified with `_update_LL_Played` as `_update_Played` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Played(self, matches_played):
-    # {{{
+        # {{{
         if matches_played is not None:
             seasons = [season for season in matches_played.groupby('Sea')]
             for sea, season in seasons:
@@ -461,25 +508,28 @@ class Data:
                 ind_teams = [(sea, team_id) for team_id in teams_played[0]]
 
                 self.SL_data.loc[ind_teams, 'SL_Played'] = self.SL_data.loc[ind_teams, 'SL_Played'] + \
-                                                                 teams_played[1]
+                                                           teams_played[1]
+
     # }}}
 
     # TODO: Could be unified with `_update_LL_Accu` as `_update_Accu` but for different frames. <17-11-20, kunzaatko> #
     def _update_SL_Accu(self, matches_played):
-    # {{{
+        # {{{
         '''
         Update 'SL_Accu' of the frame `self.LL_data`
         '''
         pass
+
     # }}}
 
     def _UPDATE_match_data_features(self):
-    # {{{
+        # {{{
         '''
         Populate all the features of `self.match_data`
         '''
         # if we are on the first inc or we skiped some dates...
-        if not np.setdiff1d(self.matches.Date.to_numpy()[self.matches.Date.to_numpy() < self.yesterday],self.match_data.Date.to_numpy()).size == 0:
+        if not np.setdiff1d(self.matches.Date.to_numpy()[self.matches.Date.to_numpy() < self.yesterday],
+                            self.match_data.Date.to_numpy()).size == 0:
             self._update_add_matches(self.matches[self.matches.Date <= self.yesterday])
         elif self.yesterday in self.matches['Date'].to_numpy():
             # a dataframe of all the todays matches (matches that where played on `self.today`)
@@ -487,17 +537,19 @@ class Data:
             self._update_add_matches(matches_played_yesterday)
 
         # TODO: should be done incrementaly <17-11-20, kunzaatko> #
+
     # }}}
 
     # FIXME: does not update the matches that are not gone through at today... The matches in the first inc. <18-11-20, kunzaatko> #
     def _update_add_matches(self, matches_played_yesterday):
-    # {{{
+        # {{{
         '''
         Add the matches that were played yesterday. The fields 'MatchID', 'Date' == self.yesterday, 'Oppo' == HID/AID, 'Home' & 'Away' (int 1/0), 'M_Goals_Scored' & 'M_Goals_Conceded' (int), 'M_Win' & 'M_Draw' & 'M_Lose' (int 1/0), 'M_P(Win)' & 'M_P(Draw)' & 'M_P(Lose)' (float), 'M_Accu' should be filled.
         '''
         # the matches that played as home
-        matches_home = matches_played_yesterday.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
-        renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(A)':'M_P(Lose)'}
+        matches_home = matches_played_yesterday.set_index('HID').drop(labels=['Open', 'opps_Date'], axis=1)
+        renames = {'AID': 'Oppo', 'HSC': 'M_Goals_Scored', 'ASC': 'M_Goals_Conceded', 'H': 'M_Win', 'D': 'M_Draw',
+                   'A': 'M_Lose', 'P(H)': 'M_P(Win)', 'P(D)': 'M_P(Draw)', 'P(A)': 'M_P(Lose)'}
         matches_home.rename(renames, axis=1, inplace=True)
         matches_home['Home'] = 1
         matches_home['Away'] = 0
@@ -505,8 +557,9 @@ class Data:
         # TODO: Model accuracy <17-11-20, kunzaatko> #
 
         # the matches that played as away
-        matches_away = matches_played_yesterday.set_index('AID').drop(labels=['Open','opps_Date'],axis=1)
-        renames = {'HID':'Oppo', 'ASC':'M_Goals_Scored', 'HSC':'M_Goals_Conceded', 'A':'M_Win', 'D':'M_Draw', 'H':'M_Lose', 'P(A)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(H)':'M_P(Lose)'}
+        matches_away = matches_played_yesterday.set_index('AID').drop(labels=['Open', 'opps_Date'], axis=1)
+        renames = {'HID': 'Oppo', 'ASC': 'M_Goals_Scored', 'HSC': 'M_Goals_Conceded', 'A': 'M_Win', 'D': 'M_Draw',
+                   'H': 'M_Lose', 'P(A)': 'M_P(Win)', 'P(D)': 'M_P(Draw)', 'P(H)': 'M_P(Lose)'}
         matches_away.rename(renames, axis=1, inplace=True)
         matches_away['Home'] = 0
         matches_away['Away'] = 1
@@ -515,6 +568,7 @@ class Data:
 
         # TODO: Do not create a new object but only concat. <17-11-20, kunzaatko> #
         self.match_data = self.match_data.append([matches_away, matches_home])
+
     # }}}
 
     ##############
@@ -522,7 +576,7 @@ class Data:
     ##############
 
     def total_goals_to_match(self, ID, number_of_matches, MatchID=None, goal_type='scored'):
-    # {{{
+        # {{{
         '''
         Total life-long goal to match ratio.
 
@@ -535,11 +589,12 @@ class Data:
             float: scored goals / # matches
         '''
         pass
+
     # }}}
 
     # TODO features working with goals_scored/conceded for particluar team should be wrapped to one method
     def goals_difference_to_num_matches(self, team_id, num_matches=1):
-    # {{{
+        # {{{
         """
         Calculates (GS-GC) of specific team from goals scored and conceded in particular number of matches played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -562,7 +617,7 @@ class Data:
         # %timeit matches[matches["HID"]==team_id].append(matches[matches["AID"]==team_id]).sort_index()
         # 3.31 ms ± 75.8 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
         matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
-                                               (self.matches["AID"] == team_id)].sort_index()[-num_matches-1:-1]
+                                               (self.matches["AID"] == team_id)].sort_index()[-num_matches - 1:-1]
         goals_conceded, goals_scored = np.nan, np.nan
         if not matches_containing_team.empty:
             goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
@@ -571,10 +626,11 @@ class Data:
                            matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
         return goals_scored - goals_conceded
+
     # }}}
 
     def goals_difference_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
-    # {{{
+        # {{{
         """
         Calculates (GS-GC) of specific team from goals scored and conceded in particular time period played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -610,8 +666,9 @@ class Data:
                     time_period_num *= 365  # year fixed to 365 days
 
                 how_deep_to_past = np.datetime64(self.today) - np.timedelta64(time_period_num, 'D')
-                matches_containing_team = matches_containing_team[(matches_containing_team['Date'] >= str(how_deep_to_past))
-                                                                  & (matches_containing_team['Date'] < self.yesterday)]
+                matches_containing_team = matches_containing_team[
+                    (matches_containing_team['Date'] >= str(how_deep_to_past))
+                    & (matches_containing_team['Date'] < self.yesterday)]
                 if not matches_containing_team.empty:
                     goals_conceded = matches_containing_team[matches_containing_team["HID"] == team_id]['ASC'].sum() + \
                                      matches_containing_team[matches_containing_team["AID"] == team_id]['HSC'].sum()
@@ -620,7 +677,7 @@ class Data:
 
             elif time_period_type == 'S':
                 # It is assumed that team is already added in DataFrame self.LL_data
-                matches_containing_team = self.SL_data.xs(team_id, level='second')[-1-time_period_num:-1]
+                matches_containing_team = self.SL_data.xs(team_id, level='second')[-1 - time_period_num:-1]
                 if not matches_containing_team.empty:
                     goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum()
                     goals_scored = matches_containing_team['SL_Goals_Scored'].sum()
@@ -629,10 +686,11 @@ class Data:
         elif time_period_type == 'L':
             # It is assumed that team is already added in DataFrame self.LL_data
             return self.LL_data.loc[team_id, 'LL_Goals_Scored'] - self.LL_data.loc[team_id, 'LL_Goals_Conceded']
+
     # }}}
 
     def goals_ratio_to_num_matches(self, team_id, num_matches=1):
-    # {{{
+        # {{{
         """
         Calculates (GS/GC) of specific team from goals scored and conceded in particular number of matches played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -652,7 +710,7 @@ class Data:
         # %timeit matches[matches["HID"]==team_id].append(matches[matches["AID"]==team_id]).sort_index()
         # 3.31 ms ± 75.8 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
         matches_containing_team = self.matches[(self.matches["HID"] == team_id) |
-                                               (self.matches["AID"] == team_id)].sort_index()[-1-num_matches:-1]
+                                               (self.matches["AID"] == team_id)].sort_index()[-1 - num_matches:-1]
 
         goals_conceded, goals_scored = np.nan, np.nan
         if not matches_containing_team.empty:
@@ -662,10 +720,11 @@ class Data:
                            matches_containing_team[matches_containing_team["AID"] == team_id]['ASC'].sum()
 
         return goals_scored / goals_conceded if goals_conceded != 0 else goals_scored / (goals_conceded + 1)
+
     # }}}
 
     def goals_ratio_to_time_period(self, team_id, time_period_type='M', time_period_num=1):
-    # {{{
+        # {{{
         """
         Calculates (GS/GC) of specific team from goals scored and conceded in particular time period played before.
         This feature should somehow aggregate information about team attack and defensive strength.
@@ -712,7 +771,7 @@ class Data:
 
             elif time_period_type == 'S':
                 # It is assumed that team is already added in DataFrame self.LL_data
-                matches_containing_team = self.SL_data.xs(team_id, level='second')[-1-time_period_num:-1]
+                matches_containing_team = self.SL_data.xs(team_id, level='second')[-1 - time_period_num:-1]
                 if not matches_containing_team.empty:
                     goals_conceded = matches_containing_team['SL_Goals_Conceded'].sum()
                     goals_scored = matches_containing_team['SL_Goals_Scored'].sum()
@@ -723,10 +782,11 @@ class Data:
             gs, gc = self.LL_data.loc[team_id, 'LL_Goals_Scored'], self.LL_data.loc[team_id, 'LL_Goals_Conceded']
 
             return gs / gc if gc != 0 else gs / (gc + 1)
+
     # }}}
 
-    def goals_to_match_ratio(self,ID, number_of_matches,MatchID=None, goal_type='scored'):
-    # {{{
+    def goals_to_match_ratio(self, ID, number_of_matches, MatchID=None, goal_type='scored'):
+        # {{{
         '''
         Parametrs:
             ID(int): ID of the team.
@@ -748,10 +808,11 @@ class Data:
             return last_number_of_matches.M_Goals_Scored.sum() / number_of_matches
         else:
             return last_number_of_matches.M_Goals_Conceded.sum() / number_of_matches
+
     # }}}
 
-    def goals_ratio(self, ID, oppo_ID, matches = 1, vs = False):
-    # {{{
+    def goals_ratio(self, ID, oppo_ID, matches=1, vs=False):
+        # {{{
         '''
         Returns (goals_scored/(goals_scored  + goals_conceded)) of first team or this vs statistics
         Parametrs:
@@ -762,25 +823,28 @@ class Data:
         Returns:
             float or 2 floats
         '''
-        matches_period =self.matches[(self.matches["HID"]==ID) | (self.matches["AID"]==ID)].sort_index()[-1-matches:-1]
+        matches_period = self.matches[(self.matches["HID"] == ID) | (self.matches["AID"] == ID)].sort_index()[
+                         -1 - matches:-1]
         if vs:
-            matches_period =matches_period[matches_period["HID"]==oppo_ID].append(matches_period[matches_period["AID"]==oppo_ID]).sort_index()[-1-matches:-1]
+            matches_period = matches_period[matches_period["HID"] == oppo_ID].append(
+                matches_period[matches_period["AID"] == oppo_ID]).sort_index()[-1 - matches:-1]
         goals_conceded, goals_scored = np.nan, np.nan
 
         if not matches_period.empty:
-            goals_conceded = matches_period[matches_period["HID"]==ID]['ASC'].sum() + \
-                             matches_period[matches_period["AID"]==ID]['HSC'].sum()
-            goals_scored = matches_period[matches_period["HID"]==ID]['HSC'].sum() + \
-                           matches_period[matches_period["AID"]==ID]['ASC'].sum()
-        goals_ID =goals_scored/(goals_scored + goals_conceded)
+            goals_conceded = matches_period[matches_period["HID"] == ID]['ASC'].sum() + \
+                             matches_period[matches_period["AID"] == ID]['HSC'].sum()
+            goals_scored = matches_period[matches_period["HID"] == ID]['HSC'].sum() + \
+                           matches_period[matches_period["AID"] == ID]['ASC'].sum()
+        goals_ID = goals_scored / (goals_scored + goals_conceded)
         if vs:
-            return (goals_ID, (1-goals_ID))
+            return (goals_ID, (1 - goals_ID))
         else:
             return goals_ID
+
     # }}}
 
-    def wins_ratio(self, ID, months = None, matches=None):
-    # {{{
+    def wins_ratio(self, ID, months=None, matches=None):
+        # {{{
         '''
         Returns wins in time or match period
         Parameters:
@@ -791,7 +855,8 @@ class Data:
             int
         '''
         if months != None:
-            months_period =self.matches[self.matches['Date'].isin(pd.date_range(end=self.today, periods=(months*30), freq='D')[::-1])]
+            months_period = self.matches[
+                self.matches['Date'].isin(pd.date_range(end=self.today, periods=(months * 30), freq='D')[::-1])]
             wins = np.nan
             if not months_period.empty:
                 wins = months_period[months_period["HID"] == ID]["H"].sum() + \
@@ -799,16 +864,18 @@ class Data:
             return wins
 
         else:
-            matches_period =self.matches[(self.matches["HID"] == ID) | (self.matches["AID"] == ID)].sort_index()[-1-matches:-1]
+            matches_period = self.matches[(self.matches["HID"] == ID) | (self.matches["AID"] == ID)].sort_index()[
+                             -1 - matches:-1]
             wins = np.nan
             if not matches_period.empty:
                 wins = matches_period[matches_period["HID"] == ID]['H'].sum() + \
                        matches_period[matches_period["AID"] == ID]['A'].sum()
             return wins
+
     # }}}
 
-    def home_advantage(self, ID, MatchID = None, method=None):
-    # {{{
+    def home_advantage(self, ID, MatchID=None, method=None):
+        # {{{
         '''
         Calculate the home advantage feature of the team. t.i. (# home_wins)/(# home_plays) - (#wins)/(#plays)
         That is home_win_r - win_r. (The advantage of playing home against the total win rate).
@@ -825,29 +892,31 @@ class Data:
         team_matches_home = team_matches[team_matches.Home == 1]
         # if calculating with all the match IDs that are currently recorded
         if not MatchID:
-            home_win_r = (team_matches_home['M_Win'] + team_matches_home['M_Draw'] * .5).sum()/len(team_matches_home)
-            if method in ['rate_surplus','rate_ratio','all']:
-                win_r = (team_matches['M_Win'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+            home_win_r = (team_matches_home['M_Win'] + team_matches_home['M_Draw'] * .5).sum() / len(team_matches_home)
+            if method in ['rate_surplus', 'rate_ratio', 'all']:
+                win_r = (team_matches['M_Win'] + team_matches['M_Draw'] * .5).sum() / len(team_matches)
         # calculate for some arbitrary MatchID with more matches being recorded than only the ones berfore the MatchID (for correlation purposes)
         else:
             match_date = self.matches.loc[MatchID].Date
             previous_home_matches = team_matches[(team_matches.Date < match_date) & (team_matches.Home == 1)]
             previous_matches = team_matches[team_matches.Date < match_date]
-            home_win_r = (previous_home_matches['M_Win'] + previous_home_matches['M_Draw'] * .5).sum()/len(previous_home_matches)
-            if method in ['rate_surplus','rate_ratio','all']:
-                win_r = (previous_matches['M_Win'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
+            home_win_r = (previous_home_matches['M_Win'] + previous_home_matches['M_Draw'] * .5).sum() / len(
+                previous_home_matches)
+            if method in ['rate_surplus', 'rate_ratio', 'all']:
+                win_r = (previous_matches['M_Win'] + previous_matches['M_Draw'] * .5).sum() / len(previous_matches)
         if method == 'rate_surplus':
             return home_win_r - win_r
         elif method == 'rate_ratio':
-            return home_win_r / win_r # test only away_lose_r
+            return home_win_r / win_r  # test only away_lose_r
         elif method == 'all':
-            return (home_win_r - win_r, home_win_r/win_r,home_win_r)
+            return (home_win_r - win_r, home_win_r / win_r, home_win_r)
         else:
             return home_win_r
+
     # }}}
 
-    def away_disadvantage(self, ID, MatchID = None, method=None):
-    # {{{
+    def away_disadvantage(self, ID, MatchID=None, method=None):
+        # {{{
         '''
         Calculate the away disadvantage feature of the team. t.i. (# away_loses)/(# away_plays) - (# loses)/(#plays)`
         That is away_lose_r - lose_r. (The advantage of playing home against the total win rate).
@@ -864,34 +933,39 @@ class Data:
         team_matches_away = team_matches[team_matches.Away == 1]
         # if calculating with all the match IDs that are currently recorded
         if not MatchID:
-            away_lose_r = (team_matches_away['M_Lose'] + team_matches_away['M_Draw'] * .5).sum()/len(team_matches_away)
-            if method in ['rate_surplus','rate_ratio','all']:
-                lose_r = (team_matches['M_Lose'] + team_matches['M_Draw'] * .5).sum()/len(team_matches)
+            away_lose_r = (team_matches_away['M_Lose'] + team_matches_away['M_Draw'] * .5).sum() / len(
+                team_matches_away)
+            if method in ['rate_surplus', 'rate_ratio', 'all']:
+                lose_r = (team_matches['M_Lose'] + team_matches['M_Draw'] * .5).sum() / len(team_matches)
         # calculate for some arbitrary MatchID with more matches being recorded than only the ones berfore the MatchID (for correlation purposes)
         else:
             match_date = self.matches.loc[MatchID]['Date']
             previous_away_matches = team_matches[(team_matches.Date < match_date) & (team_matches.Away == 1)]
             previous_matches = team_matches[team_matches.Date < match_date]
-            away_lose_r = (previous_away_matches['M_Lose'] + previous_away_matches['M_Draw'] * .5).sum()/len(previous_away_matches)
-            if method in ['rate_surplus','rate_ratio','all']:
-                lose_r = (previous_matches['M_Lose'] + previous_matches['M_Draw'] * .5).sum()/len(previous_matches)
+            away_lose_r = (previous_away_matches['M_Lose'] + previous_away_matches['M_Draw'] * .5).sum() / len(
+                previous_away_matches)
+            if method in ['rate_surplus', 'rate_ratio', 'all']:
+                lose_r = (previous_matches['M_Lose'] + previous_matches['M_Draw'] * .5).sum() / len(previous_matches)
 
         if method == 'rate_surplus':
             return away_lose_r - lose_r
         elif method == 'rate_ratio':
-            return away_lose_r / lose_r # test only away_lose_r
+            return away_lose_r / lose_r  # test only away_lose_r
         elif method == 'all':
-            return (away_lose_r - lose_r,  away_lose_r / lose_r, away_lose_r)
+            return (away_lose_r - lose_r, away_lose_r / lose_r, away_lose_r)
         else:
             return away_lose_r
+
     # }}}
 
     def elo_diff(self, MatchID):
-    # {{{
+        # {{{
         '''
         Returns the difference of the ELO ratings of the two teams playing in the match. (ELO_home - ELO_away)
         '''
-        return self.LL_data.loc[self.matches.loc[MatchID].HID].ELO_rating - self.LL_data.loc[self.matches.loc[MatchID].AID].ELO_rating
+        return self.LL_data.loc[self.matches.loc[MatchID].HID].ELO_rating - self.LL_data.loc[
+            self.matches.loc[MatchID].AID].ELO_rating
+
     # }}}
 
     ###################
@@ -899,55 +973,59 @@ class Data:
     ###################
 
     def _UPDATE_features(self):
-    # {{{
+        # {{{
         '''
         Updates the features in the attribute `self.features`
         '''
+
         def update_for_match(row):
             MatchID = row.name
             match_date = self.matches.loc[MatchID].Date
-            home_team,away_team  = self.matches.loc[MatchID].HID,self.matches.loc[MatchID].AID
+            home_team, away_team = self.matches.loc[MatchID].HID, self.matches.loc[MatchID].AID
 
             home_all_matches = self.match_data.loc[home_team]
             away_all_matches = self.match_data.loc[away_team]
             # only taking matches that are older, than the currently analysed
-            if type(home_all_matches) == pd.DataFrame: # there are multiple matches
+            if type(home_all_matches) == pd.DataFrame:  # there are multiple matches
                 home_matches = home_all_matches[self.match_data.loc[home_team].Date < match_date]
-            elif type(home_all_matches) == pd.Series: # there is only one match therefore the `home_all_matches` is a `pd.Series`
+            elif type(
+                    home_all_matches) == pd.Series:  # there is only one match therefore the `home_all_matches` is a `pd.Series`
                 home_matches = home_all_matches if home_all_matches.loc['Date'] < match_date else None
-            else: # there is no match
+            else:  # there is no match
                 home_matches = None
 
-
-            if type(away_all_matches) == pd.DataFrame: # there are multiple matches
+            if type(away_all_matches) == pd.DataFrame:  # there are multiple matches
                 away_matches = away_all_matches[self.match_data.loc[away_team].Date < match_date]
-            elif type(home_all_matches) == pd.Series: # there is only one match therefore the `away_all_matches` is a `pd.Series`
+            elif type(
+                    home_all_matches) == pd.Series:  # there is only one match therefore the `away_all_matches` is a `pd.Series`
                 away_matches = away_all_matches if away_all_matches.loc['Date'] < match_date else None
-            else: # there is no match
+            else:  # there is no match
                 away_matches = None
 
             if type(home_matches) == pd.DataFrame:
                 home_last_15 = home_matches.tail(15)
-                sum_home_last_15_r = home_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(home_last_15)
+                sum_home_last_15_r = home_last_15[['M_Goals_Scored', 'M_Goals_Conceded', 'M_Win', 'M_Lose',
+                                                   'M_Draw']].sum() / len(home_last_15)
             elif type(home_matches) == pd.Series:
-                sum_home_last_15_r = home_matches.loc[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']]
+                sum_home_last_15_r = home_matches.loc[
+                    ['M_Goals_Scored', 'M_Goals_Conceded', 'M_Win', 'M_Lose', 'M_Draw']]
             else:
                 sum_home_last_15_r = None
 
-
             if type(away_matches) == pd.DataFrame:
                 away_last_15 = away_matches.tail(15)
-                sum_away_last_15_r = away_last_15[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']].sum()/len(away_last_15)
+                sum_away_last_15_r = away_last_15[['M_Goals_Scored', 'M_Goals_Conceded', 'M_Win', 'M_Lose',
+                                                   'M_Draw']].sum() / len(away_last_15)
             elif type(away_matches) == pd.Series:
-                sum_away_last_15_r = away_matches.loc[['M_Goals_Scored','M_Goals_Conceded','M_Win','M_Lose','M_Draw']]
+                sum_away_last_15_r = away_matches.loc[
+                    ['M_Goals_Scored', 'M_Goals_Conceded', 'M_Win', 'M_Lose', 'M_Draw']]
             else:
                 sum_away_last_15_r = None
 
-
-
             if not sum_home_last_15_r is None:
                 # H_GS_GC_diff_#15
-                new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = sum_home_last_15_r.M_Goals_Scored - sum_home_last_15_r.M_Goals_Conceded
+                new_feature_frame.at[
+                    MatchID, 'H_GS_GC_diff_#15'] = sum_home_last_15_r.M_Goals_Scored - sum_home_last_15_r.M_Goals_Conceded
 
                 # H_GS_# && H_GC_# && H_WR_#
                 new_feature_frame.at[MatchID, 'H_GS_#'] = sum_home_last_15_r.M_Goals_Scored
@@ -957,7 +1035,7 @@ class Data:
                 new_feature_frame.at[MatchID, 'H_LR_#'] = sum_home_last_15_r.M_Lose
             else:
                 # H_GS_GC_diff_#15
-                new_feature_frame.at[MatchID,'H_GS_GC_diff_#15'] = np.nan
+                new_feature_frame.at[MatchID, 'H_GS_GC_diff_#15'] = np.nan
 
                 # H_GS_# && H_GC_# && H_WR_#
                 new_feature_frame.at[MatchID, 'H_GS_#'] = np.nan
@@ -966,11 +1044,10 @@ class Data:
                 new_feature_frame.at[MatchID, 'H_DR_#'] = np.nan
                 new_feature_frame.at[MatchID, 'H_LR_#'] = np.nan
 
-
-
             if not sum_away_last_15_r is None:
                 # A_GS_GC_diff_#15
-                new_feature_frame.at[MatchID,'A_GS_GC_diff_#15'] = sum_away_last_15_r.M_Goals_Scored - sum_away_last_15_r.M_Goals_Conceded
+                new_feature_frame.at[
+                    MatchID, 'A_GS_GC_diff_#15'] = sum_away_last_15_r.M_Goals_Scored - sum_away_last_15_r.M_Goals_Conceded
 
                 # A_GS_# && A_GC_#
                 new_feature_frame.at[MatchID, 'A_GS_#'] = sum_away_last_15_r.M_Goals_Scored
@@ -980,7 +1057,7 @@ class Data:
                 new_feature_frame.at[MatchID, 'A_LR_#'] = sum_away_last_15_r.M_Lose
             else:
                 # A_GS_GC_diff_#15
-                new_feature_frame.at[MatchID,'A_GS_GC_diff_#15'] = np.nan
+                new_feature_frame.at[MatchID, 'A_GS_GC_diff_#15'] = np.nan
 
                 # A_GS_# && A_GC_#
                 new_feature_frame.at[MatchID, 'A_GS_#'] = np.nan
@@ -992,18 +1069,22 @@ class Data:
         # teams that do not have features yet
         unregistered_matches = np.setdiff1d(self.matches.index.to_numpy(), self.features.index.to_numpy())
         # new data frame that will be appended to self.features
-        new_feature_frame = pd.DataFrame(columns=['H_GS_GC_diff_#15','A_GS_GC_diff_#15','H_GS_#','A_GS_#','H_GC_#','A_GC_#','H_WR_#','A_WR_#','H_DR_#','A_DR_#','H_LR_#','A_LR_#'], index=unregistered_matches)
-        new_feature_frame.apply(update_for_match,axis=1)
-        self.features = pd.concat((self.features,new_feature_frame)).sort_index()
+        new_feature_frame = pd.DataFrame(
+            columns=['H_GS_GC_diff_#15', 'A_GS_GC_diff_#15', 'H_GS_#', 'A_GS_#', 'H_GC_#', 'A_GC_#', 'H_WR_#', 'A_WR_#',
+                     'H_DR_#', 'A_DR_#', 'H_LR_#', 'A_LR_#'], index=unregistered_matches)
+        new_feature_frame.apply(update_for_match, axis=1)
+        self.features = pd.concat((self.features, new_feature_frame)).sort_index()
+
     # }}}
 
     def return_values(self):
-    # {{{
+        # {{{
         '''
         Return the values of the features in `self.today`
         '''
         return self.features.loc[self.opps_matches]
     # }}}
+
 
 # plain numpy runs it faster about 4 ms, njit not jit did nor give better performance (tested on np.ndarray with shape (74664, 2))
 # plain numpy: 98.8 ms ± 189 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
@@ -1026,7 +1107,6 @@ def fast(pairs):
         out[i, 0], out[i, 1] = team, num
     return out
     # }}}
-
 
 
 class PoissonRegression(object):
@@ -1055,7 +1135,8 @@ class PoissonRegression(object):
             Returns fitted time independent poisson regression model.
         """
 
-        self.model = smf.glm(formula="goals ~ home + C(team) + C(opponent)", data=self.goal_data.iloc[-self.n_most_recent*2:],
+        self.model = smf.glm(formula="goals ~ home + C(team) + C(opponent)",
+                             data=self.goal_data.iloc[-self.n_most_recent * 2:],
                              family=sm.families.Poisson()).fit_regularized(L1_wt=0, alpha=0.01)
 
     def _update_teams(self, inc):
@@ -1067,7 +1148,7 @@ class PoissonRegression(object):
         """
         teams = self.goal_data[["team", "opponent"]]
         if self.use_recency:
-            teams = teams.iloc[-self.n_most_recent*2:]
+            teams = teams.iloc[-self.n_most_recent * 2:]
         self.teams = teams["team"].unique()
 
     def _update_goal_data(self, inc):
@@ -1349,12 +1430,14 @@ class PredictiveModel(object):
         self.last_update = 0
         self.debug = debug
 
-        self.clf = CalibratedClassifierCV(base_estimator=classifier, cv=5, method='sigmoid') if use_calibration else classifier
+        self.clf = CalibratedClassifierCV(base_estimator=classifier, cv=5,
+                                          method='sigmoid') if use_calibration else classifier
         self.imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
         self.scaler = MinMaxScaler(feature_range=(0, 1), copy=True)  # scales cols of features between 0-1 (we can use
         # normalizer to normalize each row (input vector to one) instead.)
         self.pipeline = Pipeline(
-            steps=[('imputer', self.imputer), ('scaler', self.scaler), ('classifier', self.clf)])  # HERE IS THE HEARTH OF MODEL (FITTED MODEL)
+            steps=[('imputer', self.imputer), ('scaler', self.scaler),
+                   ('classifier', self.clf)])  # HERE IS THE HEARTH OF MODEL (FITTED MODEL)
 
         self.P_dis = None
         self.accuracy = pd.DataFrame()  # TODO implement me if needed
@@ -1383,8 +1466,8 @@ class PredictiveModel(object):
         ##################
         # It is assumed that in class Data() exist dataframe containing final data
         # HID, AID needs to be one-hot encoded or not used
-        features = self.data.features.loc[:(self.data.opps_matches[0]-1)].copy()
-        labels = self.data.matches.loc[:(self.data.opps_matches[0]-1), ['H', 'D', 'A']].copy()
+        features = self.data.features.loc[:(self.data.opps_matches[0] - 1)].copy()
+        labels = self.data.matches.loc[:(self.data.opps_matches[0] - 1), ['H', 'D', 'A']].copy()
 
         if self.use_recency:
             features = features.tail(self.n_most_recent)
@@ -1392,7 +1475,6 @@ class PredictiveModel(object):
 
         features = features.to_numpy()
         labels = labels.to_numpy()
-
 
         self.pipeline.fit(features, np.argmax(labels, axis=1))  # H has index 0, D has index 1, A has index 2
 
@@ -1407,7 +1489,7 @@ class PredictiveModel(object):
                 # cardinality features (many unique values). See sklearn.inspection.permutation_importance as an
                 # alternative.
                 feature_importances = self.clf.feature_importances_  # this will work only if
-                                                                                  # booster = gbtree !!!
+                # booster = gbtree !!!
 
                 indices = np.argsort(feature_importances)[::-1]
                 # Print the feature ranking
@@ -1544,21 +1626,21 @@ class Bet_distribution:
         exp_profit = pd.DataFrame(data=(self.odds.to_numpy() * self.P_dis.to_numpy()), columns=["ExpH", "ExpD", "ExpA"],
                                   index=self.P_dis.index)  # index sorted so we multiply matching elements
         opt = self.optimize(exp_profit, self.odds)
-        #kelly = self.kelly_criterion(exp_profit, self.odds)
+        # kelly = self.kelly_criterion(exp_profit, self.odds)
 
         for i in range(exp_profit.to_numpy().shape[0]):
             argmax = np.unravel_index(exp_profit.to_numpy().argmax(), exp_profit.to_numpy().shape)
-            if not (self.bet_exp_profit_margin <= exp_profit.to_numpy().max() <= 1.5):
+            if not (self.bet_exp_profit_margin <= exp_profit.to_numpy().max() <= 2.0):
                 exp_profit.iloc[argmax] = 0
                 continue
-            # ind = self.bets.index.values.astype(int)[argmax[0]]
-            # if ind not in self.matches_already_bet:
+            #ind = self.bets.index.values.astype(int)[argmax[0]]
+            #if ind not in self.matches_already_bet:
             #    self.matches_already_bet.add(ind)
             if self.summary['Bankroll'] >= (self.summary['Min_bet'] + self.summary['Max_bet']):
-                #bet_kelly = kelly[argmax] * self.summary['Max_bet'] * 0.33
+                # bet_kelly = kelly[argmax] * self.summary['Max_bet'] * 0.33
                 bet_opt = opt[argmax]
-                bet = bet_opt#self.summary['Max_bet'] / exp_profit.shape[0]
-                self.bets.iloc[argmax] = bet
+                bet = bet_opt  # self.summary['Max_bet'] / exp_profit.shape[0]
+                self.bets.iloc[argmax] = self.summary['Max_bet']
                 self.summary['Bankroll'] -= bet
 
             elif self.summary['Bankroll'] >= 2 * self.summary['Min_bet']:
@@ -1575,7 +1657,7 @@ class Bet_distribution:
 
         return log
 
-    def run_iter(self, summary, opps, P_dis):
+    def run_iter(self, summary, opps, P_dis, inc):
         '''
         The outermost API for Bet_distribution. Run bet_distribution on the iter.
 
@@ -1592,7 +1674,7 @@ class Bet_distribution:
         self.eval_P_dis(P_dis)
         self.update_bets()
         # this should remove teams from self.matches_already_bet if present in inc, inc param have to be added to run_iter func
-        # self.eval_inc(inc)
+        self.eval_inc(inc)
 
 
 # ###############################################################################################################################
@@ -1601,129 +1683,117 @@ class Bet_distribution:
 ##########################################
 #  HERE SET THE CLASSIFIER'S PARAMETERS  #
 ##########################################
-rf = RandomForestClassifier(n_estimators=100,  # DEFAULT CLASSIFIER IS RANDOM FOREST
-                                               criterion='gini',
-                                               max_depth=6,
-                                               min_samples_split=2,
-                                               min_samples_leaf=1,
-                                               max_features='auto',
-                                               bootstrap=True,
-                                               oob_score=False,
-                                               n_jobs=None,
-                                               random_state=None,
-                                               warm_start=False,
-                                               # When warm_start is true, the existing fitted model
-                                               # attributes are used to initialize the new model in a
-                                               # subsequent call to fit.
-                                               class_weight=None,
-                                               max_samples=None)
+rf = RandomForestClassifier(n_estimators=200,  # DEFAULT CLASSIFIER IS RANDOM FOREST
+                            criterion='gini',
+                            max_depth=20,
+                            min_samples_split=20,
+                            min_samples_leaf=10,
+                            max_features='auto',
+                            bootstrap=True,
+                            oob_score=False,
+                            n_jobs=None,
+                            random_state=None,
+                            warm_start=False,
+                            class_weight='balanced_subsample',
+                            max_samples=None)
 
 # What makes XGBoost unique is that it uses “a more regularized model formalization to control
 # over-fitting, which gives it better performance” , according to the author of the algorithm,
 # Tianqi Chen. Therefore, it helps to reduce overfitting. TODO test Standalone Random Forest With
 #  Scikit-Learn-Like API (https://xgboost.readthedocs.io/en/latest/tutorials/rf.html)
 xgboost = xgb.XGBClassifier(n_estimators=100,  # TODO consider incremental training
-                                          max_depth=6,
-                                          # Increasing this value will make the model more complex and
-                                          # more likely to overfit Beware that XGBoost aggressively
-                                          # consumes memory when training a deep tree.
-                                          learning_rate=0.1,
-                                          verbosity=1,
-                                          objective='multi:softmax',
-                                          num_class=3,
-                                          booster='gbtree',
-                                          tree_method='auto',
-                                          # It’s recommended to study this option from parameters document.
-                                          # The tree construction algorithm used in XGBoost. See description
-                                          # https://arxiv.org/pdf/1603.02754.pdf
-                                          n_jobs=None,
-                                          gamma=0,
-                                          # The larger gamma is, the more conservative the algorithm will
-                                          # be. range: [0,∞]
-                                          min_child_weight=1,  # range: [0,∞]
-                                          subsample=1,
-                                          reg_alpha=0,
-                                          # L1 regularization term on weights. Increasing this value will
-                                          # make model more conservative. AKA Lasso regularization
-                                          reg_lambda=1,
-                                          # L2 regularization term on weights. Increasing this value will
-                                          # make model more conservative. AKA Ridge regularization
-                                          #scale_pos_weight=1,
-                                          base_score=0.5,
-                                          random_state=None,
-                                          missing=None,
-                                          # maybe not use this because we have to process this more
-                                          # generally
-                                          num_parallel_tree=3,
-                                          monotone_constraints=None,
-                                          interaction_constraints=None,
-                                          importance_type='gain')
+                            max_depth=6,
+                            # Increasing this value will make the model more complex and
+                            # more likely to overfit Beware that XGBoost aggressively
+                            # consumes memory when training a deep tree.
+                            learning_rate=0.1,
+                            verbosity=1,
+                            objective='multi:softmax',
+                            num_class=3,
+                            booster='gbtree',
+                            tree_method='auto',
+                            # It’s recommended to study this option from parameters document.
+                            # The tree construction algorithm used in XGBoost. See description
+                            # https://arxiv.org/pdf/1603.02754.pdf
+                            n_jobs=None,
+                            gamma=0,
+                            # The larger gamma is, the more conservative the algorithm will
+                            # be. range: [0,∞]
+                            min_child_weight=1,  # range: [0,∞]
+                            subsample=1,
+                            reg_alpha=0,
+                            # L1 regularization term on weights. Increasing this value will
+                            # make model more conservative. AKA Lasso regularization
+                            reg_lambda=1,
+                            # L2 regularization term on weights. Increasing this value will
+                            # make model more conservative. AKA Ridge regularization
+                            # scale_pos_weight=1,
+                            base_score=0.5,
+                            random_state=None,
+                            missing=None,
+                            # maybe not use this because we have to process this more
+                            # generally
+                            num_parallel_tree=3,
+                            monotone_constraints=None,
+                            interaction_constraints=None,
+                            importance_type='gain')
 
 ab = AdaBoostClassifier(base_estimator=None,
-                                           n_estimators=50,
-                                           learning_rate=1,
-                                           algorithm='SAMME.R',
-                                           random_state=None)
+                        n_estimators=50,
+                        learning_rate=1,
+                        algorithm='SAMME.R',
+                        random_state=None)
 gb = GradientBoostingClassifier(loss='deviance',
-                                                       learning_rate=0.1,
-                                                       n_estimators=100,
-                                                       subsample=1.0,
-                                                       criterion='friedman_mse',
-                                                       min_samples_split=2,
-                                                       min_samples_leaf=1,
-                                                       max_depth=6,
-                                                       init=None,
-                                                       # init has to provide fit and predict_proba. If
-                                                       # ‘zero’, the initial raw predictions are set to zero.
-                                                       # By default, a DummyEstimator predicting the classes
-                                                       # priors is used.
-                                                       random_state=None,
-                                                       max_features=None,
-                                                       verbose=0,
-                                                       warm_start=False,
-                                                       # When warm_start is true, the existing fitted model
-                                                       # attributes are used to initialize the new model in a
-                                                       # subsequent call to fit.
-                                                       validation_fraction=0.1,
-                                                       n_iter_no_change=None,
-                                                       )
+                                learning_rate=0.1,
+                                n_estimators=100,
+                                subsample=1.0,
+                                criterion='friedman_mse',
+                                min_samples_split=2,
+                                min_samples_leaf=1,
+                                max_depth=6,
+                                init=None,
+                                # init has to provide fit and predict_proba. If
+                                # ‘zero’, the initial raw predictions are set to zero.
+                                # By default, a DummyEstimator predicting the classes
+                                # priors is used.
+                                random_state=None,
+                                max_features=None,
+                                verbose=0,
+                                warm_start=False,
+                                # When warm_start is true, the existing fitted model
+                                # attributes are used to initialize the new model in a
+                                # subsequent call to fit.
+                                validation_fraction=0.1,
+                                n_iter_no_change=None,
+                                )
 vc = VotingClassifier(estimators=[],
-                                             voting='hard',
-                                             weights=None,
-                                             n_jobs=None,
-                                             verbose=False)
+                      voting='hard',
+                      weights=None,
+                      n_jobs=None,
+                      verbose=False)
 gnb = GaussianNB()
 
 # The algorithm gets significantly slower as the number of examples and/or predictors/independent
 # variables increase.
 knn = KNeighborsClassifier(n_neighbors=15,
-                                             weights='uniform',
-                                             algorithm='auto',
-                                             leaf_size=30,
-                                             p=2,
-                                             # Power parameter for the Minkowski metric. p=1 (l1),
-                                             # p=2 (l2), p (lp)
-                                             metric='minkowski',
-                                             n_jobs=None)
+                           leaf_size=1)  # get from exhaustive grid search cross validation
 
 logistic_regression = LogisticRegression(penalty='l2',
-                                               C=1.0,
-                                               class_weight=None,
-                                               random_state=None,
-                                               #solver='lbfgs',
-                                               max_iter=100,
-                                               multi_class='auto',
-                                               verbose=0,
-                                               warm_start=True,
-                                               # When warm_start is true, the existing fitted model
-                                               # attributes are used to initialize the new model in a
-                                               # subsequent call to fit.
-                                               n_jobs=None)
-
-
+                                         C=1.2,
+                                         class_weight=None,
+                                         random_state=None,
+                                         # solver='lbfgs',
+                                         max_iter=1000,
+                                         multi_class='auto',
+                                         verbose=0,
+                                         warm_start=False,
+                                         # When warm_start is true, the existing fitted model
+                                         # attributes are used to initialize the new model in a
+                                         # subsequent call to fit.
+                                         n_jobs=None)
 
 bet_distribution = Bet_distribution
-params = {'use_recency': True, 'n_most_recent': 2000, 'classifier': knn, 'update_frequency': 1, 'debug': False,
+params = {'use_recency': False, 'n_most_recent': 3000, 'classifier': logistic_regression, 'update_frequency': 1, 'debug': False,
           'use_calibration': True}
 model = PredictiveModel
 
@@ -1731,7 +1801,8 @@ model = PredictiveModel
 # ###############################################################################################################################
 
 class Model:
-    def __init__(self, model=model, model_params=params, log=True, bet_distribution = bet_distribution, bet_distribution_params={}):
+    def __init__(self, model=model, model_params=params, log=True, bet_distribution=bet_distribution,
+                 bet_distribution_params={}):
         '''
         Initialization of the model class with the parameters we want to use for evaluation.
 
@@ -1747,7 +1818,6 @@ class Model:
         self.bet_distribution = bet_distribution(**bet_distribution_params)
         self.log = log
 
-
     def place_bets(self, opps, summary, inc):
         '''
         The outermost API method for the evaluation loop. The evaluation loop relies on the avalibility of this method for the model class.
@@ -1762,8 +1832,7 @@ class Model:
         pandas.DataFrame: With the bets that we want to place. Indexed by the teams `ID`.
         '''
 
-
-        self.data.update_data(opps=opps,summary=summary, inc=inc)
+        self.data.update_data(opps=opps, summary=summary, inc=inc)
 
         # all features must be updated before model training
         self.data.update_features()
@@ -1772,7 +1841,7 @@ class Model:
 
         self.data.update_data(P_dis=self.model.P_dis)
 
-        log_bet_distribution = self.bet_distribution.run_iter(summary, opps, self.model.P_dis)
+        log_bet_distribution = self.bet_distribution.run_iter(summary, opps, self.model.P_dis, inc)
         self.data.update_data(bets=self.bet_distribution.bets)
 
         if self.log is True:

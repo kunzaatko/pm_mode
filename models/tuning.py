@@ -2,10 +2,10 @@ import pandas as pd
 import numpy as np
 from models.predictive_model import PredictiveModel
 
-from test import knn  # here import the model to be tunned
+from test import rf, ab, gb, xgboost, knn, logistic_regression, gnb  # here import the model to be tunned
 
-params = {'use_recency': True, 'n_most_recent': 2000, 'classifier': knn, 'update_frequency': 1, 'debug': True,
-          'use_calibration': True}  # params to initialize PredictiveModel class
+params = {'use_recency': True, 'n_most_recent': 3000, 'classifier': knn, 'update_frequency': 1, 'debug': True,
+          'use_calibration': False}  # params to initialize PredictiveModel class
 
 features_ = pd.read_csv('../features.csv')
 dataset = pd.read_csv('../training_data.csv', parse_dates=['Date', 'Open'])
@@ -43,11 +43,17 @@ if __name__ == '__main__':
     predictor = PredictiveModel(src, **params)
     step = 250  # meant as matches
 
+    knn_grid = {'leaf_size': list(range(1, 50)), 'n_neighbors': list(range(1, 50))}
+
     for i in range(params['n_most_recent'] + step, features_.shape[0] - 2*src.tested_size, step):
-        print(f'Training on matches from {i - step - params["n_most_recent"]} to {i - step - 1} \n'
+        from_ = i - step - params["n_most_recent"] if params['use_recency'] else 0
+        print(f'Training on matches from {from_} to {i - step - 1} \n'
               f'Testing on matches from {i - step} to {i - step + src.tested_size - 1}')
         predictor.run_iter([], src.return_values())
         predictor.test_me(src.return_values(), src.matches.loc[src.opps_matches[0]: src.opps_matches[0] + src.tested_size - 1,
                                                ['H', 'D', 'A']])
+        predictor.tune_me(src.return_values(), src.matches.loc[src.opps_matches[0]: src.opps_matches[0] + src.tested_size - 1,
+                                               ['H', 'D', 'A']], hyperparams=knn_grid, type='grid')
         src.opps_matches = [i]
-        print('################################################### \n')
+        input('################################################### \n')
+

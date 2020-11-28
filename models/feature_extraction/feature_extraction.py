@@ -62,8 +62,8 @@ class Data:
         #           | 'P(H)'               | 'P(D)'           | 'P(A)'               | 'BetH'       | 'BetD'   | 'BetA'
         #           | model prob. home win | model prob. draw | model prob. away win | bet home win | bet draw | bet away win
 
-        types = {'Date':'datetime64[ns]', 'Open':'datetime64[ns]', 'Sea':'int16','HID':'int16','AID':'int16','OddsH':'float64','OddsD':'float64','OddsA':'float64','HSC':'int16','ASC':'int16','H':'int64','D':'int64','A':'int64','P(H)':'float64','P(D)':'float64','P(A)':'float64','BetH':'float64','BetD':'float64','BetA':'float64'}
-        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']).astype(types, copy=False) # All matches played by IDs ﭾ
+        types = {'Date':'datetime64[ns]', 'Sea':'int16','HID':'int16','AID':'int16','OddsH':'float64','OddsD':'float64','OddsA':'float64','HSC':'int16','ASC':'int16','H':'int64','D':'int64','A':'int64','P(H)':'float64','P(D)':'float64','P(A)':'float64','BetH':'float64','BetD':'float64','BetA':'float64'}
+        self.matches = pd.DataFrame(columns=['opps_Date','Sea','Date','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']).astype(types, copy=False) # All matches played by IDs ﭾ
 
 
         #########################
@@ -143,7 +143,7 @@ class Data:
                 self._EVAL_bets(bets)
 
             if self._sort_columns:
-                self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
+                self.matches = self.matches[['opps_Date','Sea','Date','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
                 if self.ELO_rating:
                     self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu','ELO_rating']]
                 else:
@@ -187,7 +187,7 @@ class Data:
         # {{{
         self.opps_matches = opps.index.to_numpy()
         self._eval_teams(opps, self._curr_inc_teams)
-        self._eval_matches(opps, update_columns=['Sea','Date','LID','HID','AID','Open','OddsH','OddsA','OddsD'])
+        self._eval_matches(opps, update_columns=['Sea','Date','LID','HID','AID','OddsH','OddsA','OddsD'])
         # }}}
 
     def _EVAL_P_dis(self, P_dis):
@@ -486,7 +486,7 @@ class Data:
         Add the matches that were played yesterday. The fields 'MatchID', 'Date' == self.yesterday, 'Oppo' == HID/AID, 'Home' & 'Away' (int 1/0), 'M_Goals_Scored' & 'M_Goals_Conceded' (int), 'M_Win' & 'M_Draw' & 'M_Lose' (int 1/0), 'M_P(Win)' & 'M_P(Draw)' & 'M_P(Lose)' (float), 'M_Accu' should be filled.
         '''
         # the matches that played as home
-        matches_home = matches_played_yesterday.set_index('HID').drop(labels=['Open','opps_Date'],axis=1)
+        matches_home = matches_played_yesterday.set_index('HID').drop(labels=['opps_Date'],axis=1)
         renames = {'AID':'Oppo', 'HSC':'M_Goals_Scored', 'ASC':'M_Goals_Conceded', 'H':'M_Win', 'D':'M_Draw', 'A':'M_Lose', 'P(H)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(A)':'M_P(Lose)'}
         matches_home.rename(renames, axis=1, inplace=True)
         matches_home['Home'] = 1
@@ -495,7 +495,7 @@ class Data:
         # TODO: Model accuracy <17-11-20, kunzaatko> #
 
         # the matches that played as away
-        matches_away = matches_played_yesterday.set_index('AID').drop(labels=['Open','opps_Date'],axis=1)
+        matches_away = matches_played_yesterday.set_index('AID').drop(labels=['opps_Date'],axis=1)
         renames = {'HID':'Oppo', 'ASC':'M_Goals_Scored', 'HSC':'M_Goals_Conceded', 'A':'M_Win', 'D':'M_Draw', 'H':'M_Lose', 'P(A)':'M_P(Win)', 'P(D)':'M_P(Draw)', 'P(H)':'M_P(Lose)'}
         matches_away.rename(renames, axis=1, inplace=True)
         matches_away['Home'] = 0

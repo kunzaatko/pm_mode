@@ -13,7 +13,7 @@ class Data:
 
     # TODO: Make everything that is possible inplace and copy=False to increase performance
     # TODO: Add dtypes to the self.attributes that are dataframes for faster operations [TLE] <16-11-20, kunzaatko> #
-    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, LL_data = True):
+    def __init__(self, sort_columns=True, optional_data_cols=[], ELO_mean_ELO=1500, ELO_k_factor=20, LL_data = True, dummy=False):
     # {{{
         '''
         Parameters:
@@ -31,6 +31,7 @@ class Data:
         self._curr_inc_teams = None # teams that are in inc
         self._curr_opps_teams = None # teams that are in opps
         self._matches_not_registered_to_features = None # matches, that were not yet counted into team features
+        self._dummy = dummy
 
         if 'ELO_rating' in optional_data_cols:
             self.ELO_rating = True
@@ -118,34 +119,35 @@ class Data:
         summary(pandas.DataFrame): includes the `Max_bet`, `Min_bet` and `Bankroll`.
         inc(pandas.DataFrame): includes the played matches with the scores for the model.
         '''
-        if summary is not None:
-            self._EVAL_summary(summary)
+        if not self._dummy:
+            if summary is not None:
+                self._EVAL_summary(summary)
 
-        if inc is not None:
-            if self.today in inc['Date'].values:
-                print(all(pd.isna(inc.groupby('Date').get_group(self.today))))
-            inc = inc.loc[:,~inc.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
-            self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
-            self._EVAL_inc(inc)
+            if inc is not None:
+                if self.today in inc['Date'].values:
+                    print(all(pd.isna(inc.groupby('Date').get_group(self.today))))
+                inc = inc.loc[:,~inc.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
+                self._curr_inc_teams = np.unique(np.concatenate((inc['HID'].to_numpy(dtype='int64'),inc['AID'].to_numpy(dtype='int64'))))
+                self._EVAL_inc(inc)
 
-        if opps is not None:
-            opps = opps.loc[:,~opps.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
-            self._curr_opps_teams = np.unique(np.concatenate((opps['HID'].to_numpy(dtype='int64'),opps['AID'].to_numpy(dtype='int64'))))
-            opps['opps_Date'] = self.today
-            self._EVAL_opps(opps)
+            if opps is not None:
+                opps = opps.loc[:,~opps.columns.str.match('Unnamed')] # removing the 'Unnamed: 0' column (memory saning) See: https://stackoverflow.com/questions/36519086/how-to-get-rid-of-unnamed-0-column-in-a-pandas-dataframe
+                self._curr_opps_teams = np.unique(np.concatenate((opps['HID'].to_numpy(dtype='int64'),opps['AID'].to_numpy(dtype='int64'))))
+                opps['opps_Date'] = self.today
+                self._EVAL_opps(opps)
 
-        if P_dis is not None:
-            self._EVAL_P_dis(P_dis)
+            if P_dis is not None:
+                self._EVAL_P_dis(P_dis)
 
-        if bets is not None:
-            self._EVAL_bets(bets)
+            if bets is not None:
+                self._EVAL_bets(bets)
 
-        if self._sort_columns:
-            self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
-            if self.ELO_rating:
-                self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu','ELO_rating']]
-            else:
-                self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']]
+            if self._sort_columns:
+                self.matches = self.matches[['opps_Date','Sea','Date','Open','LID','HID','AID','HSC','ASC','H','D','A','OddsH','OddsD','OddsA','P(H)','P(D)', 'P(A)','BetH','BetD','BetA']]
+                if self.ELO_rating:
+                    self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu','ELO_rating']]
+                else:
+                    self.LL_data = self.LL_data[['LID', 'LL_Goals_Scored','LL_Goals_Conceded','LL_Wins', 'LL_Draws', 'LL_Loses', 'LL_Played', 'LL_Accu']]
 
         # }}}
 
@@ -278,10 +280,11 @@ class Data:
         '''
         Update the features for the data stored in `self`.
         '''
-        self._UPDATE_LL_data_features()
-        #self._UPDATE_SL_data_features()
-        self._UPDATE_match_data_features()
-        self._UPDATE_features()
+        if not self._dummy:
+            self._UPDATE_LL_data_features()
+            #self._UPDATE_SL_data_features()
+            self._UPDATE_match_data_features()
+            self._UPDATE_features()
     # }}}
 
     def _UPDATE_LL_data_features(self):

@@ -235,25 +235,25 @@ class Data:
             # NOTE: This could be optimised radically but it has shown to be a pain in the ass so this is it. If there will be a 'TLE' (time limit exceeded) error, this is the place to change <15-11-20, kunzaatko> #
 
             # teams in the data_frame that are stored in the self.LL_data (teams that could have been changed)
-            index_old_teams = np.intersect1d(index_self_teams,index_data_frame)
-            index_old_teams_HID = np.intersect1d(index_old_teams, data_frame['HID'].to_numpy(dtype='int64'))
-            index_old_teams_AID = np.intersect1d(index_old_teams, data_frame['AID'].to_numpy(dtype='int64'))
+            # index_old_teams = np.intersect1d(index_self_teams,index_data_frame)
+            # index_old_teams_HID = np.intersect1d(index_old_teams, data_frame['HID'].to_numpy(dtype='int64'))
+            # index_old_teams_AID = np.intersect1d(index_old_teams, data_frame['AID'].to_numpy(dtype='int64'))
 
-            for index in index_old_teams_HID:
-                if not type(data_frame.set_index('HID').loc[index]) == pd.DataFrame:
-                    if not data_frame.set_index('HID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
-                else:
-                    if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+            # for index in index_old_teams_HID:
+            #     if not type(data_frame.set_index('HID').loc[index]) == pd.DataFrame:
+            #         if not data_frame.set_index('HID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
+            #             self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
+            #     else:
+            #         if not data_frame.set_index('HID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
+            #             self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('HID').at[index, 'LID'])
 
-            for index in index_old_teams_AID:
-                if not type(data_frame.set_index('AID').loc[index]) == pd.DataFrame:
-                    if not data_frame.set_index('AID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
-                else:
-                    if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
-                        self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+            # for index in index_old_teams_AID:
+            #     if not type(data_frame.set_index('AID').loc[index]) == pd.DataFrame:
+            #         if not data_frame.set_index('AID').loc[index]['LID'] in self.LL_data.at[index,'LID']:
+            #             self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
+            #     else:
+            #         if not data_frame.set_index('AID').loc[index].iloc[0]['LID'] in self.LL_data.at[index,'LID']:
+            #             self.LL_data.at[index,'LID'] = np.append(self.LL_data.at[index,'LID'],data_frame.set_index('AID').at[index, 'LID'])
 
             # see also (https://stackoverflow.com/questions/45062340/check-if-single-element-is-contained-in-numpy-array)}}}
 

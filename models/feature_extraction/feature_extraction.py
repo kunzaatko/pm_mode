@@ -896,7 +896,7 @@ class Data:
         def update_for_match(row):
             MatchID = row.name
             match_date = self.matches.loc[MatchID].Date
-            home_team,away_team  = self.matches.loc[MatchID].HID,self.matches.loc[MatchID].AID
+            home_team,away_team  = int(self.matches.loc[MatchID].HID),int(self.matches.loc[MatchID].AID)
 
             home_all_matches = self.match_data.loc[home_team]
             away_all_matches = self.match_data.loc[away_team]
